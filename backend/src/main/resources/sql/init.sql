@@ -1,52 +1,94 @@
-CREATE TABLE subject (
-    id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '科目ID',
-    name VARCHAR(50) NOT NULL COMMENT '科目名称',
-    created_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-    updated_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-    UNIQUE KEY uk_subject_name (name)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='科目表';
+CREATE TABLE IF NOT EXISTS subject (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name VARCHAR(50) NOT NULL,
+    created_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT uk_subject_name UNIQUE (name)
+);
 
-CREATE TABLE question_type (
-    id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '题型ID',
-    subject_id BIGINT NOT NULL COMMENT '科目ID',
-    name VARCHAR(50) NOT NULL COMMENT '题型名称',
-    created_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-    updated_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-    UNIQUE KEY uk_subject_type_name (subject_id, name),
-    KEY idx_question_type_subject_id (subject_id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='题型表';
+CREATE TABLE IF NOT EXISTS question_type (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    subject_id INTEGER NOT NULL,
+    name VARCHAR(50) NOT NULL,
+    created_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT uk_subject_type_name UNIQUE (subject_id, name),
+    CONSTRAINT fk_question_type_subject
+        FOREIGN KEY (subject_id)
+        REFERENCES subject(id)
+        ON DELETE RESTRICT
+        ON UPDATE CASCADE
+);
 
-CREATE TABLE tag (
-    id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '标签ID',
-    name VARCHAR(50) NOT NULL COMMENT '标签名称',
-    created_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-    updated_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-    UNIQUE KEY uk_tag_name (name)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='标签表';
+CREATE INDEX IF NOT EXISTS idx_question_type_subject_id
+    ON question_type (subject_id);
 
-CREATE TABLE question (
-    id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '题目ID',
-    subject_id BIGINT NOT NULL COMMENT '科目ID',
-    type_id BIGINT NOT NULL COMMENT '题型ID',
-    content TEXT NOT NULL COMMENT '题目正文，支持LaTeX字符串',
-    answer TEXT NULL COMMENT '参考答案，支持LaTeX字符串',
-    analysis TEXT NULL COMMENT '解析，可为空，支持LaTeX字符串',
-    image_url VARCHAR(500) NULL COMMENT '题目图片URL，一期只保存字符串',
-    answer_image_url VARCHAR(500) NULL COMMENT '答案图片URL，一期只保存字符串',
-    difficulty TINYINT NOT NULL DEFAULT 1 COMMENT '难度：1简单，2中等，3困难',
-    created_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-    updated_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-    KEY idx_question_subject_id (subject_id),
-    KEY idx_question_type_id (type_id),
-    KEY idx_question_created_time (created_time)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='题目表';
+CREATE TABLE IF NOT EXISTS tag (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name VARCHAR(50) NOT NULL,
+    created_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT uk_tag_name UNIQUE (name)
+);
 
-CREATE TABLE question_tag (
-    id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '关联ID',
-    question_id BIGINT NOT NULL COMMENT '题目ID',
-    tag_id BIGINT NOT NULL COMMENT '标签ID',
-    created_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-    UNIQUE KEY uk_question_tag (question_id, tag_id),
-    KEY idx_question_tag_question_id (question_id),
-    KEY idx_question_tag_tag_id (tag_id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='题目标签关联表';
+CREATE TABLE IF NOT EXISTS question (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    subject_id INTEGER NOT NULL,
+    type_id INTEGER NOT NULL,
+    content TEXT NOT NULL,
+    answer TEXT NULL,
+    analysis TEXT NULL,
+    image_url VARCHAR(500) NULL,
+    answer_image_url VARCHAR(500) NULL,
+    difficulty INTEGER NOT NULL DEFAULT 1,
+    created_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_question_subject
+        FOREIGN KEY (subject_id)
+        REFERENCES subject(id)
+        ON DELETE RESTRICT
+        ON UPDATE CASCADE,
+    CONSTRAINT fk_question_type
+        FOREIGN KEY (type_id)
+        REFERENCES question_type(id)
+        ON DELETE RESTRICT
+        ON UPDATE CASCADE,
+    CONSTRAINT chk_question_difficulty
+        CHECK (difficulty IN (1, 2, 3))
+);
+
+CREATE INDEX IF NOT EXISTS idx_question_subject_id
+    ON question (subject_id);
+
+CREATE INDEX IF NOT EXISTS idx_question_type_id
+    ON question (type_id);
+
+CREATE INDEX IF NOT EXISTS idx_question_created_time
+    ON question (created_time);
+
+CREATE INDEX IF NOT EXISTS idx_question_difficulty
+    ON question (difficulty);
+
+CREATE TABLE IF NOT EXISTS question_tag (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    question_id INTEGER NOT NULL,
+    tag_id INTEGER NOT NULL,
+    created_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT uk_question_tag UNIQUE (question_id, tag_id),
+    CONSTRAINT fk_question_tag_question
+        FOREIGN KEY (question_id)
+        REFERENCES question(id)
+        ON DELETE CASCADE
+        ON UPDATE CASCADE,
+    CONSTRAINT fk_question_tag_tag
+        FOREIGN KEY (tag_id)
+        REFERENCES tag(id)
+        ON DELETE RESTRICT
+        ON UPDATE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_question_tag_question_id
+    ON question_tag (question_id);
+
+CREATE INDEX IF NOT EXISTS idx_question_tag_tag_id
+    ON question_tag (tag_id);
