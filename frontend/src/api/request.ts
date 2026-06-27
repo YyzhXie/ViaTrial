@@ -17,7 +17,6 @@ request.interceptors.response.use(
       return Promise.reject(result)
     }
 
-    response.data = result.data
     return response
   },
   (error) => {
@@ -28,7 +27,7 @@ request.interceptors.response.use(
 )
 
 export function requestData<T>(config: AxiosRequestConfig): Promise<T> {
-  return request.request<T, T>(config)
+  return request.request<Result<T>>(config).then((response) => response.data.data)
 }
 
 export default request
