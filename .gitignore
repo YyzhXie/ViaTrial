@@ -30,6 +30,12 @@ bin/
 ### VS Code ###
 .vscode/
 
+### Node / Frontend ###
+node_modules/
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+
 ### Mac OS ###
 .DS_Store
 .idea/

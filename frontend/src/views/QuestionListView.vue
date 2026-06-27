@@ -1,0 +1,287 @@
+<template>
+  <main class="page-shell">
+    <section class="toolbar">
+      <el-form :model="filters" inline label-width="72px" class="filter-form">
+        <el-form-item label="科目">
+          <el-select
+            v-model="filters.subjectId"
+            clearable
+            filterable
+            placeholder="全部科目"
+            class="filter-control"
+            @change="handleSubjectFilterChange"
+            @clear="handleSubjectFilterClear"
+          >
+            <el-option
+              v-for="subject in subjects"
+              :key="subject.id"
+              :label="subject.name"
+              :value="subject.id"
+            />
+          </el-select>
+        </el-form-item>
+
+        <el-form-item label="题型">
+          <el-select
+            v-model="filters.typeId"
+            :disabled="!filters.subjectId"
+            :loading="typeLoading"
+            clearable
+            filterable
+            placeholder="全部题型"
+            class="filter-control"
+          >
+            <el-option
+              v-for="type in questionTypes"
+              :key="type.id"
+              :label="type.name"
+              :value="type.id"
+            />
+          </el-select>
+        </el-form-item>
+
+        <el-form-item label="标签">
+          <el-select
+            v-model="filters.tagId"
+            clearable
+            filterable
+            placeholder="全部标签"
+            class="filter-control"
+          >
+            <el-option
+              v-for="tag in tags"
+              :key="tag.id"
+              :label="tag.name"
+              :value="tag.id"
+            />
+          </el-select>
+        </el-form-item>
+
+        <el-form-item>
+          <el-button type="primary" :icon="Search" @click="handleSearch">查询</el-button>
+          <el-button :icon="RefreshLeft" @click="handleReset">重置</el-button>
+          <el-button type="success" :icon="Plus" @click="dialogVisible = true">新增题目</el-button>
+        </el-form-item>
+      </el-form>
+    </section>
+
+    <el-table
+      v-loading="loading"
+      :data="questions"
+      border
+      row-key="id"
+      class="question-table"
+    >
+      <el-table-column prop="subjectName" label="科目" min-width="110" />
+      <el-table-column prop="typeName" label="题型" min-width="110" />
+      <el-table-column label="题目内容" min-width="260">
+        <template #default="{ row }">
+          <LatexRenderer :content="row.content" />
+        </template>
+      </el-table-column>
+      <el-table-column label="答案" min-width="220">
+        <template #default="{ row }">
+          <LatexRenderer :content="row.answer" />
+        </template>
+      </el-table-column>
+      <el-table-column label="解析" min-width="220">
+        <template #default="{ row }">
+          <LatexRenderer :content="row.analysis" />
+        </template>
+      </el-table-column>
+      <el-table-column label="难度" width="80" align="center">
+        <template #default="{ row }">
+          <el-tag :type="difficultyType(row.difficulty)" effect="plain">{{ row.difficulty }}</el-tag>
+        </template>
+      </el-table-column>
+      <el-table-column label="标签" min-width="180">
+        <template #default="{ row }">
+          <div class="tag-list">
+            <el-tag v-for="tag in row.tags" :key="tag.id" size="small">{{ tag.name }}</el-tag>
+          </div>
+        </template>
+      </el-table-column>
+      <el-table-column label="图片" min-width="160">
+        <template #default="{ row }">
+          <div class="image-list">
+            <el-image
+              v-if="row.imageUrl"
+              :src="row.imageUrl"
+              :preview-src-list="[row.imageUrl]"
+              fit="cover"
+              class="question-image"
+              preview-teleported
+            />
+            <el-image
+              v-if="row.answerImageUrl"
+              :src="row.answerImageUrl"
+              :preview-src-list="[row.answerImageUrl]"
+              fit="cover"
+              class="question-image"
+              preview-teleported
+            />
+          </div>
+        </template>
+      </el-table-column>
+      <el-table-column prop="createdTime" label="创建时间" min-width="170" />
+      <el-table-column label="操作" width="96" fixed="right">
+        <template #default="{ row }">
+          <el-button type="danger" link :icon="Delete" @click="handleDelete(row.id)">删除</el-button>
+        </template>
+      </el-table-column>
+    </el-table>
+
+    <div class="pagination-row">
+      <el-pagination
+        v-model:current-page="pagination.page"
+        v-model:page-size="pagination.size"
+        :total="pagination.total"
+        :page-sizes="[10, 20, 50]"
+        layout="total, sizes, prev, pager, next, jumper"
+        @current-change="loadQuestions"
+        @size-change="handleSizeChange"
+      />
+    </div>
+
+    <QuestionFormDialog v-model="dialogVisible" @success="handleQuestionCreated" />
+  </main>
+</template>
+
+<script setup lang="ts">
+import { Delete, Plus, RefreshLeft, Search } from '@element-plus/icons-vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { onMounted, reactive, ref } from 'vue'
+
+import { deleteQuestion, pageQuestions } from '@/api/question'
+import { listQuestionTypes } from '@/api/questionType'
+import { listSubjects } from '@/api/subject'
+import { listTags } from '@/api/tag'
+import LatexRenderer from '@/components/LatexRenderer.vue'
+import QuestionFormDialog from '@/components/QuestionFormDialog.vue'
+import type { Question } from '@/types/question'
+import type { QuestionType } from '@/types/questionType'
+import type { Subject } from '@/types/subject'
+import type { Tag } from '@/types/tag'
+
+const loading = ref(false)
+const typeLoading = ref(false)
+const dialogVisible = ref(false)
+const subjects = ref<Subject[]>([])
+const questionTypes = ref<QuestionType[]>([])
+const tags = ref<Tag[]>([])
+const questions = ref<Question[]>([])
+
+const filters = reactive<{
+  subjectId?: number
+  typeId?: number
+  tagId?: number
+}>({})
+
+const pagination = reactive({
+  page: 1,
+  size: 10,
+  total: 0,
+})
+
+const difficultyType = (difficulty: number) => {
+  if (difficulty === 1) {
+    return 'success'
+  }
+  if (difficulty === 2) {
+    return 'warning'
+  }
+  return 'danger'
+}
+
+const loadBaseData = async () => {
+  const [subjectList, tagList] = await Promise.all([listSubjects(), listTags()])
+  subjects.value = subjectList
+  tags.value = tagList
+}
+
+const loadQuestionTypes = async (subjectId: number) => {
+  typeLoading.value = true
+  try {
+    questionTypes.value = await listQuestionTypes(subjectId)
+  } finally {
+    typeLoading.value = false
+  }
+}
+
+const loadQuestions = async () => {
+  loading.value = true
+  try {
+    const result = await pageQuestions({
+      page: pagination.page,
+      size: pagination.size,
+      subjectId: filters.subjectId,
+      typeId: filters.typeId,
+      tagId: filters.tagId,
+    })
+    questions.value = result.records
+    pagination.total = result.total
+  } finally {
+    loading.value = false
+  }
+}
+
+const handleSubjectFilterChange = async (subjectId?: number) => {
+  filters.typeId = undefined
+  questionTypes.value = []
+
+  if (subjectId) {
+    await loadQuestionTypes(subjectId)
+  }
+}
+
+const handleSubjectFilterClear = () => {
+  filters.subjectId = undefined
+  filters.typeId = undefined
+  questionTypes.value = []
+}
+
+const handleSearch = () => {
+  pagination.page = 1
+  loadQuestions()
+}
+
+const handleReset = () => {
+  filters.subjectId = undefined
+  filters.typeId = undefined
+  filters.tagId = undefined
+  questionTypes.value = []
+  pagination.page = 1
+  loadQuestions()
+}
+
+const handleSizeChange = () => {
+  pagination.page = 1
+  loadQuestions()
+}
+
+const handleQuestionCreated = async () => {
+  pagination.page = 1
+  await Promise.all([loadBaseData(), loadQuestions()])
+}
+
+const handleDelete = async (id: number) => {
+  await ElMessageBox.confirm('确定删除这道题目吗？', '删除确认', {
+    confirmButtonText: '删除',
+    cancelButtonText: '取消',
+    type: 'warning',
+  })
+
+  await deleteQuestion(id)
+  ElMessage.success('删除题目成功')
+
+  if (questions.value.length === 1 && pagination.page > 1) {
+    pagination.page -= 1
+  }
+  await loadQuestions()
+}
+
+onMounted(async () => {
+  await loadBaseData()
+  await loadQuestions()
+})
+</script>
