@@ -8,5 +8,5 @@ public class DatabaseConfig {
 
     public static final String DATA_DIR = "data";
     public static final String DATABASE_FILE = "viatrial.db";
-    public static final String DATABASE_URL = "jdbc:sqlite:" + DATA_DIR + "/" + DATABASE_FILE;
+    public static final String DATABASE_URL = "jdbc:sqlite:./" + DATA_DIR + "/" + DATABASE_FILE;
 }
