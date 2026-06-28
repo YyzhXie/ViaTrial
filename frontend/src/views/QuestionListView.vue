@@ -60,6 +60,8 @@
         <el-form-item>
           <el-button type="primary" :icon="Search" @click="handleSearch">查询</el-button>
           <el-button :icon="RefreshLeft" @click="handleReset">重置</el-button>
+          <el-button :icon="Plus" @click="openSubjectDialog">新增科目</el-button>
+          <el-button :icon="Plus" @click="openTagDialog">新增标签</el-button>
           <el-button type="success" :icon="Plus" @click="dialogVisible = true">新增题目</el-button>
         </el-form-item>
       </el-form>
@@ -144,6 +146,42 @@
     </div>
 
     <QuestionFormDialog v-model="dialogVisible" @success="handleQuestionCreated" />
+
+    <el-dialog v-model="subjectDialogVisible" title="新增科目" width="420px" destroy-on-close>
+      <el-form label-width="72px" @submit.prevent>
+        <el-form-item label="科目名称" required>
+          <el-input
+            v-model="subjectForm.name"
+            maxlength="50"
+            clearable
+            placeholder="请输入科目名称"
+            @keyup.enter="submitSubject"
+          />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="subjectDialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="subjectSubmitting" @click="submitSubject">保存</el-button>
+      </template>
+    </el-dialog>
+
+    <el-dialog v-model="tagDialogVisible" title="新增标签" width="420px" destroy-on-close>
+      <el-form label-width="72px" @submit.prevent>
+        <el-form-item label="标签名称" required>
+          <el-input
+            v-model="tagForm.name"
+            maxlength="50"
+            clearable
+            placeholder="请输入标签名称"
+            @keyup.enter="submitTag"
+          />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="tagDialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="tagSubmitting" @click="submitTag">保存</el-button>
+      </template>
+    </el-dialog>
   </main>
 </template>
 
@@ -154,8 +192,8 @@ import { onMounted, reactive, ref } from 'vue'
 
 import { deleteQuestion, pageQuestions } from '@/api/question'
 import { listQuestionTypes } from '@/api/questionType'
-import { listSubjects } from '@/api/subject'
-import { listTags } from '@/api/tag'
+import { addSubject, listSubjects } from '@/api/subject'
+import { addTag, listTags } from '@/api/tag'
 import LatexRenderer from '@/components/LatexRenderer.vue'
 import QuestionFormDialog from '@/components/QuestionFormDialog.vue'
 import type { Question } from '@/types/question'
@@ -166,10 +204,22 @@ import type { Tag } from '@/types/tag'
 const loading = ref(false)
 const typeLoading = ref(false)
 const dialogVisible = ref(false)
+const subjectDialogVisible = ref(false)
+const tagDialogVisible = ref(false)
+const subjectSubmitting = ref(false)
+const tagSubmitting = ref(false)
 const subjects = ref<Subject[]>([])
 const questionTypes = ref<QuestionType[]>([])
 const tags = ref<Tag[]>([])
 const questions = ref<Question[]>([])
+
+const subjectForm = reactive({
+  name: '',
+})
+
+const tagForm = reactive({
+  name: '',
+})
 
 const filters = reactive<{
   subjectId?: number
@@ -222,6 +272,56 @@ const loadQuestions = async () => {
     pagination.total = result.total
   } finally {
     loading.value = false
+  }
+}
+
+const openSubjectDialog = () => {
+  subjectForm.name = ''
+  subjectDialogVisible.value = true
+}
+
+const openTagDialog = () => {
+  tagForm.name = ''
+  tagDialogVisible.value = true
+}
+
+const submitSubject = async () => {
+  const name = subjectForm.name.trim()
+  if (!name) {
+    ElMessage.warning('请输入科目名称')
+    return
+  }
+
+  subjectSubmitting.value = true
+  try {
+    const id = await addSubject({ name })
+    ElMessage.success('新增科目成功')
+    subjectDialogVisible.value = false
+    await loadBaseData()
+    filters.subjectId = id
+    filters.typeId = undefined
+    questionTypes.value = []
+  } finally {
+    subjectSubmitting.value = false
+  }
+}
+
+const submitTag = async () => {
+  const name = tagForm.name.trim()
+  if (!name) {
+    ElMessage.warning('请输入标签名称')
+    return
+  }
+
+  tagSubmitting.value = true
+  try {
+    const id = await addTag({ name })
+    ElMessage.success('新增标签成功')
+    tagDialogVisible.value = false
+    await loadBaseData()
+    filters.tagId = id
+  } finally {
+    tagSubmitting.value = false
   }
 }
 

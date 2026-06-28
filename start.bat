@@ -3,7 +3,7 @@ setlocal
 
 cd /d "%~dp0"
 
-if not exist "backend\target\viatrial-backend-0.0.1-SNAPSHOT.jar" (
+if not exist "backend\target\viatrial-backend-0.1.1.jar" (
   echo Jar not found. Please run:
   echo   cd backend
   echo   mvn package
@@ -14,6 +14,6 @@ if not exist "data" mkdir "data"
 
 echo Starting ViaTrial...
 echo Open http://localhost:8080 after startup.
-java -jar "backend\target\viatrial-backend-0.0.1-SNAPSHOT.jar"
+java -jar "backend\target\viatrial-backend-0.1.1.jar"
 
 endlocal
