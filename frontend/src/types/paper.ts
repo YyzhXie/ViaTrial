@@ -16,7 +16,8 @@ export interface PaperQuestion {
 }
 
 export interface PaperGenerateRequest {
-  subjectCountMap: Record<number, number>
+  subjectId: number
+  typeCountMap: Record<number, number>
 }
 
 export interface PaperGenerateResponse {

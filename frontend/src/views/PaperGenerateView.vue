@@ -8,18 +8,39 @@
         </div>
 
         <el-empty v-if="!subjects.length" description="暂无科目" />
-        <div v-else class="subject-count-list">
-          <div v-for="subject in subjects" :key="subject.id" class="subject-count-row">
-            <span class="subject-name">{{ subject.name }}</span>
-            <el-input-number
-              v-model="subjectCountMap[subject.id]"
-              :min="0"
-              :step="1"
-              step-strictly
-              controls-position="right"
-            />
+        <template v-else>
+          <el-form label-position="top" class="paper-config-form">
+            <el-form-item label="组卷科目">
+              <el-select
+                v-model="selectedSubjectId"
+                filterable
+                placeholder="选择科目"
+                @change="handleSubjectChange"
+              >
+                <el-option
+                  v-for="subject in subjects"
+                  :key="subject.id"
+                  :label="subject.name"
+                  :value="subject.id"
+                />
+              </el-select>
+            </el-form-item>
+          </el-form>
+
+          <el-empty v-if="selectedSubjectId && !questionTypes.length" description="该科目暂无题型" />
+          <div v-else-if="questionTypes.length" class="subject-count-list">
+            <div v-for="type in questionTypes" :key="type.id" class="subject-count-row">
+              <span class="subject-name">{{ type.name }}</span>
+              <el-input-number
+                v-model="typeCountMap[type.id]"
+                :min="0"
+                :step="1"
+                step-strictly
+                controls-position="right"
+              />
+            </div>
           </div>
-        </div>
+        </template>
 
         <el-button
           type="primary"
@@ -114,15 +135,19 @@ import { ElMessage } from 'element-plus'
 import { onMounted, reactive, ref } from 'vue'
 
 import { generatePaper } from '@/api/paper'
+import { listQuestionTypes } from '@/api/questionType'
 import { listSubjects } from '@/api/subject'
 import LatexRenderer from '@/components/LatexRenderer.vue'
 import type { PaperGenerateResponse } from '@/types/paper'
+import type { QuestionType } from '@/types/questionType'
 import type { Subject } from '@/types/subject'
 
 const subjects = ref<Subject[]>([])
+const questionTypes = ref<QuestionType[]>([])
+const selectedSubjectId = ref<number>()
 const paper = ref<PaperGenerateResponse>()
 const generating = ref(false)
-const subjectCountMap = reactive<Record<number, number>>({})
+const typeCountMap = reactive<Record<number, number>>({})
 
 const difficultyType = (difficulty: number) => {
   if (difficulty === 1) {
@@ -136,35 +161,46 @@ const difficultyType = (difficulty: number) => {
 
 const loadSubjects = async () => {
   subjects.value = await listSubjects()
-  subjects.value.forEach((subject) => {
-    subjectCountMap[subject.id] = subjectCountMap[subject.id] ?? 0
-  })
 }
 
 const resetCounts = () => {
-  subjects.value.forEach((subject) => {
-    subjectCountMap[subject.id] = 0
+  questionTypes.value.forEach((type) => {
+    typeCountMap[type.id] = 0
+  })
+}
+
+const handleSubjectChange = async (subjectId: number) => {
+  questionTypes.value = await listQuestionTypes(subjectId)
+  questionTypes.value.forEach((type) => {
+    typeCountMap[type.id] = typeCountMap[type.id] ?? 0
   })
 }
 
 const handleGenerate = async () => {
-  const payload: Record<number, number> = {}
+  if (!selectedSubjectId.value) {
+    ElMessage.warning('请选择组卷科目')
+    return
+  }
 
-  subjects.value.forEach((subject) => {
-    const count = subjectCountMap[subject.id] || 0
+  const payload: Record<number, number> = {}
+  questionTypes.value.forEach((type) => {
+    const count = typeCountMap[type.id] || 0
     if (count > 0) {
-      payload[subject.id] = count
+      payload[type.id] = count
     }
   })
 
   if (!Object.keys(payload).length) {
-    ElMessage.warning('请至少为一个科目填写抽题数量')
+    ElMessage.warning('请至少为一个题型填写抽题数量')
     return
   }
 
   generating.value = true
   try {
-    paper.value = await generatePaper({ subjectCountMap: payload })
+    paper.value = await generatePaper({
+      subjectId: selectedSubjectId.value,
+      typeCountMap: payload,
+    })
   } finally {
     generating.value = false
   }

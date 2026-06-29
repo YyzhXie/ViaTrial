@@ -8,8 +8,10 @@ import com.viatrial.dto.response.PaperGenerateResponse;
 import com.viatrial.dto.response.PaperQuestionResponse;
 import com.viatrial.dto.response.QuestionResponse;
 import com.viatrial.entity.Question;
+import com.viatrial.entity.QuestionType;
 import com.viatrial.entity.Subject;
 import com.viatrial.mapper.QuestionMapper;
+import com.viatrial.mapper.QuestionTypeMapper;
 import com.viatrial.mapper.SubjectMapper;
 import com.viatrial.service.PaperService;
 import org.springframework.stereotype.Service;
@@ -28,14 +30,18 @@ public class PaperServiceImpl implements PaperService {
 
     private final SubjectMapper subjectMapper;
 
+    private final QuestionTypeMapper questionTypeMapper;
+
     private final QuestionMapper questionMapper;
 
     private final QuestionServiceImpl questionService;
 
     public PaperServiceImpl(SubjectMapper subjectMapper,
+                            QuestionTypeMapper questionTypeMapper,
                             QuestionMapper questionMapper,
                             QuestionServiceImpl questionService) {
         this.subjectMapper = subjectMapper;
+        this.questionTypeMapper = questionTypeMapper;
         this.questionMapper = questionMapper;
         this.questionService = questionService;
     }
@@ -46,32 +52,46 @@ public class PaperServiceImpl implements PaperService {
         List<String> warnings = new ArrayList<>();
         int totalRequested = 0;
 
-        for (Map.Entry<Long, Integer> entry : request.getSubjectCountMap().entrySet()) {
-            Long subjectId = entry.getKey();
+        Subject subject = subjectMapper.selectById(request.getSubjectId());
+        if (subject == null) {
+            throw new BizException(ErrorCode.NOT_FOUND, "Subject does not exist");
+        }
+
+        for (Map.Entry<Long, Integer> entry : request.getTypeCountMap().entrySet()) {
+            Long typeId = entry.getKey();
             Integer requestedCount = entry.getValue();
-            if (subjectId == null) {
-                throw new BizException(ErrorCode.PARAM_ERROR, "Subject ID cannot be null");
+            if (typeId == null) {
+                throw new BizException(ErrorCode.PARAM_ERROR, "Question type ID cannot be null");
             }
             if (requestedCount == null || requestedCount <= 0) {
                 throw new BizException(ErrorCode.PARAM_ERROR, "Question count must be greater than 0");
             }
 
-            Subject subject = subjectMapper.selectById(subjectId);
-            if (subject == null) {
-                throw new BizException(ErrorCode.NOT_FOUND, "Subject does not exist");
+            QuestionType questionType = questionTypeMapper.selectById(typeId);
+            if (questionType == null) {
+                throw new BizException(ErrorCode.NOT_FOUND, "Question type does not exist");
+            }
+            if (!questionType.getSubjectId().equals(request.getSubjectId())) {
+                throw new BizException(ErrorCode.PARAM_ERROR, "Question type does not belong to subject");
             }
 
             totalRequested += requestedCount;
-            Long total = questionMapper.selectCount(new QueryWrapper<Question>().eq("subject_id", subjectId));
+            Long total = questionMapper.selectCount(new QueryWrapper<Question>()
+                    .eq("subject_id", request.getSubjectId())
+                    .eq("type_id", typeId));
             if (total == 0) {
-                warnings.add("Subject \"" + subject.getName() + "\" has no questions.");
+                warnings.add("Question type \"" + questionType.getName() + "\" has no questions.");
             } else if (total < requestedCount) {
                 selectedQuestions.addAll(questionMapper.selectList(
-                        new QueryWrapper<Question>().eq("subject_id", subjectId).orderByAsc("id")));
-                warnings.add("Subject \"" + subject.getName() + "\" has insufficient questions. Requested "
+                        new QueryWrapper<Question>()
+                                .eq("subject_id", request.getSubjectId())
+                                .eq("type_id", typeId)
+                                .orderByAsc("id")));
+                warnings.add("Question type \"" + questionType.getName() + "\" has insufficient questions. Requested "
                         + requestedCount + ", actual " + total + ".");
             } else {
-                selectedQuestions.addAll(questionMapper.selectRandomBySubjectId(subjectId, requestedCount));
+                selectedQuestions.addAll(questionMapper.selectRandomBySubjectIdAndTypeId(
+                        request.getSubjectId(), typeId, requestedCount));
             }
         }
 

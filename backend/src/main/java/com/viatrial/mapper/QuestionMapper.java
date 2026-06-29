@@ -11,4 +11,9 @@ public interface QuestionMapper extends BaseMapper<Question> {
 
     @Select("SELECT * FROM question WHERE subject_id = #{subjectId} ORDER BY RANDOM() LIMIT #{limit}")
     List<Question> selectRandomBySubjectId(@Param("subjectId") Long subjectId, @Param("limit") Integer limit);
+
+    @Select("SELECT * FROM question WHERE subject_id = #{subjectId} AND type_id = #{typeId} ORDER BY RANDOM() LIMIT #{limit}")
+    List<Question> selectRandomBySubjectIdAndTypeId(@Param("subjectId") Long subjectId,
+                                                    @Param("typeId") Long typeId,
+                                                    @Param("limit") Integer limit);
 }
