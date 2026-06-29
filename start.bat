@@ -3,7 +3,7 @@ setlocal
 
 cd /d "%~dp0"
 
-set "JAR=backend\target\viatrial-backend-0.1.1.jar"
+set "JAR=backend\target\viatrial-backend-0.1.2.jar"
 
 if not exist "%JAR%" (
   echo Jar not found. Building ViaTrial first...
