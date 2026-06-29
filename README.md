@@ -128,3 +128,7 @@ data/backup/viatrial-20260629.db
 ```
 
 恢复时，先停止程序，再用备份文件替换 `data/viatrial.db`。
+
+## 文档说明
+
+项目开发文档、设计说明和阶段性记录统一放在 `docs/` 目录。根目录 `README.md` 保留面向使用者的快速说明，模块细节请查看 `docs/backend.md`、`docs/database.md`、`docs/api.md`、`docs/frontend.md` 和 `docs/changelog.md`。
