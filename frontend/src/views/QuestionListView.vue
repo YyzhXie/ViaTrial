@@ -164,7 +164,7 @@
     <QuestionFormDialog v-model="dialogVisible" @success="handleQuestionCreated" />
 
     <el-dialog v-model="subjectDialogVisible" title="新增科目" width="420px" destroy-on-close>
-      <el-form label-width="72px" @submit.prevent>
+      <el-form label-width="96px" @submit.prevent>
         <el-form-item label="科目名称" required>
           <el-input
             v-model="subjectForm.name"
@@ -182,7 +182,7 @@
     </el-dialog>
 
     <el-dialog v-model="tagDialogVisible" title="新增标签" width="420px" destroy-on-close>
-      <el-form label-width="72px" @submit.prevent>
+      <el-form label-width="96px" @submit.prevent>
         <el-form-item label="标签名称" required>
           <el-input
             v-model="tagForm.name"
