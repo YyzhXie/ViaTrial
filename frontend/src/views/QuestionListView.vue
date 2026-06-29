@@ -61,7 +61,23 @@
           <el-button type="primary" :icon="Search" @click="handleSearch">查询</el-button>
           <el-button :icon="RefreshLeft" @click="handleReset">重置</el-button>
           <el-button :icon="Plus" @click="openSubjectDialog">新增科目</el-button>
+          <el-button
+            type="danger"
+            :icon="Delete"
+            :disabled="!filters.subjectId"
+            @click="handleDeleteSubject"
+          >
+            删除科目
+          </el-button>
           <el-button :icon="Plus" @click="openTagDialog">新增标签</el-button>
+          <el-button
+            type="danger"
+            :icon="Delete"
+            :disabled="!filters.tagId"
+            @click="handleDeleteTag"
+          >
+            删除标签
+          </el-button>
           <el-button type="success" :icon="Plus" @click="dialogVisible = true">新增题目</el-button>
         </el-form-item>
       </el-form>
@@ -192,8 +208,8 @@ import { onMounted, reactive, ref } from 'vue'
 
 import { deleteQuestion, pageQuestions } from '@/api/question'
 import { listQuestionTypes } from '@/api/questionType'
-import { addSubject, listSubjects } from '@/api/subject'
-import { addTag, listTags } from '@/api/tag'
+import { addSubject, deleteSubject, listSubjects } from '@/api/subject'
+import { addTag, deleteTag, listTags } from '@/api/tag'
 import LatexRenderer from '@/components/LatexRenderer.vue'
 import QuestionFormDialog from '@/components/QuestionFormDialog.vue'
 import type { Question } from '@/types/question'
@@ -360,6 +376,46 @@ const handleSizeChange = () => {
 }
 
 const handleQuestionCreated = async () => {
+  pagination.page = 1
+  await Promise.all([loadBaseData(), loadQuestions()])
+}
+
+const handleDeleteSubject = async () => {
+  if (!filters.subjectId) {
+    return
+  }
+
+  const subject = subjects.value.find((item) => item.id === filters.subjectId)
+  await ElMessageBox.confirm(`确定删除科目“${subject?.name ?? filters.subjectId}”吗？`, '删除确认', {
+    confirmButtonText: '删除',
+    cancelButtonText: '取消',
+    type: 'warning',
+  })
+
+  await deleteSubject(filters.subjectId)
+  ElMessage.success('删除科目成功')
+  filters.subjectId = undefined
+  filters.typeId = undefined
+  questionTypes.value = []
+  pagination.page = 1
+  await Promise.all([loadBaseData(), loadQuestions()])
+}
+
+const handleDeleteTag = async () => {
+  if (!filters.tagId) {
+    return
+  }
+
+  const tag = tags.value.find((item) => item.id === filters.tagId)
+  await ElMessageBox.confirm(`确定删除标签“${tag?.name ?? filters.tagId}”吗？`, '删除确认', {
+    confirmButtonText: '删除',
+    cancelButtonText: '取消',
+    type: 'warning',
+  })
+
+  await deleteTag(filters.tagId)
+  ElMessage.success('删除标签成功')
+  filters.tagId = undefined
   pagination.page = 1
   await Promise.all([loadBaseData(), loadQuestions()])
 }
