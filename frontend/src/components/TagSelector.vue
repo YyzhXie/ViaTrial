@@ -5,6 +5,8 @@
     multiple
     clearable
     filterable
+    allow-create
+    default-first-option
     placeholder="选择标签"
     class="tag-selector"
     @update:model-value="handleChange"
@@ -25,11 +27,11 @@ import { listTags } from '@/api/tag'
 import type { Tag } from '@/types/tag'
 
 defineProps<{
-  modelValue: number[]
+  modelValue: Array<number | string>
 }>()
 
 const emit = defineEmits<{
-  'update:modelValue': [value: number[]]
+  'update:modelValue': [value: Array<number | string>]
 }>()
 
 const loading = ref(false)
@@ -44,7 +46,7 @@ const loadTags = async () => {
   }
 }
 
-const handleChange = (value: number[]) => {
+const handleChange = (value: Array<number | string>) => {
   emit('update:modelValue', value)
 }
 

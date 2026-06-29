@@ -16,6 +16,8 @@
       <el-form-item label="科目" prop="subjectId">
         <el-select
           v-model="form.subjectId"
+          allow-create
+          default-first-option
           filterable
           placeholder="选择科目"
           @change="handleSubjectChange"
@@ -34,6 +36,8 @@
           v-model="form.typeId"
           :disabled="!form.subjectId"
           :loading="typeLoading"
+          allow-create
+          default-first-option
           filterable
           placeholder="选择题型"
         >
@@ -96,12 +100,14 @@ import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
 import { computed, reactive, ref, watch } from 'vue'
 
 import { addQuestion } from '@/api/question'
-import { listQuestionTypes } from '@/api/questionType'
-import { listSubjects } from '@/api/subject'
+import { addQuestionType, listQuestionTypes } from '@/api/questionType'
+import { addSubject, listSubjects } from '@/api/subject'
+import { addTag, listTags } from '@/api/tag'
 import TagSelector from '@/components/TagSelector.vue'
 import type { QuestionAddRequest } from '@/types/question'
 import type { QuestionType } from '@/types/questionType'
 import type { Subject } from '@/types/subject'
+import type { Tag } from '@/types/tag'
 
 const props = defineProps<{
   modelValue: boolean
@@ -112,9 +118,15 @@ const emit = defineEmits<{
   success: []
 }>()
 
-const createInitialForm = (): QuestionAddRequest => ({
-  subjectId: undefined as unknown as number,
-  typeId: undefined as unknown as number,
+type QuestionFormState = Omit<QuestionAddRequest, 'subjectId' | 'typeId' | 'tagIds'> & {
+  subjectId: number | string
+  typeId: number | string
+  tagIds: Array<number | string>
+}
+
+const createInitialForm = (): QuestionFormState => ({
+  subjectId: undefined as unknown as number | string,
+  typeId: undefined as unknown as number | string,
   content: '',
   answer: '',
   analysis: '',
@@ -125,20 +137,20 @@ const createInitialForm = (): QuestionAddRequest => ({
 })
 
 const formRef = ref<FormInstance>()
-const form = reactive<QuestionAddRequest>(createInitialForm())
+const form = reactive<QuestionFormState>(createInitialForm())
 const subjects = ref<Subject[]>([])
 const questionTypes = ref<QuestionType[]>([])
 const typeLoading = ref(false)
 const submitting = ref(false)
 
-const selectedTagIds = computed<number[]>({
+const selectedTagIds = computed<Array<number | string>>({
   get: () => form.tagIds || [],
   set: (value) => {
     form.tagIds = value
   },
 })
 
-const rules: FormRules<QuestionAddRequest> = {
+const rules: FormRules<QuestionFormState> = {
   subjectId: [{ required: true, message: '请选择科目', trigger: 'change' }],
   typeId: [{ required: true, message: '请选择题型', trigger: 'change' }],
   content: [{ required: true, message: '请输入题目内容', trigger: 'blur' }],
@@ -169,13 +181,80 @@ const loadQuestionTypes = async (subjectId: number) => {
   }
 }
 
-const handleSubjectChange = async (subjectId: number) => {
-  form.typeId = undefined as unknown as number
+const handleSubjectChange = async (subjectId: number | string) => {
+  form.typeId = undefined as unknown as number | string
   questionTypes.value = []
 
-  if (subjectId) {
+  if (typeof subjectId === 'number') {
     await loadQuestionTypes(subjectId)
   }
+}
+
+const normalizeCreatedName = (value: string, fieldName: string) => {
+  const name = value.trim()
+  if (!name) {
+    throw new Error(`${fieldName}不能为空`)
+  }
+  return name
+}
+
+const ensureSubjectId = async () => {
+  if (typeof form.subjectId === 'number') {
+    return form.subjectId
+  }
+
+  const name = normalizeCreatedName(String(form.subjectId ?? ''), '科目名称')
+  const existingSubject = subjects.value.find((subject) => subject.name === name)
+  if (existingSubject) {
+    return existingSubject.id
+  }
+
+  return addSubject({ name })
+}
+
+const ensureTypeId = async (subjectId: number) => {
+  if (typeof form.typeId === 'number') {
+    return form.typeId
+  }
+
+  const name = normalizeCreatedName(String(form.typeId ?? ''), '题型名称')
+  const typeList = questionTypes.value.length ? questionTypes.value : await listQuestionTypes(subjectId)
+  const existingType = typeList.find((type) => type.name === name)
+  if (existingType) {
+    return existingType.id
+  }
+
+  return addQuestionType({ subjectId, name })
+}
+
+const ensureTagIds = async () => {
+  const values = selectedTagIds.value
+  const tagIds: number[] = []
+  const tagNames = new Set<string>()
+  const typedTagNames = values.filter((value) => typeof value === 'string')
+  const existingTags: Tag[] = typedTagNames.length ? await listTags() : []
+
+  for (const value of values) {
+    if (typeof value === 'number') {
+      tagIds.push(value)
+      continue
+    }
+
+    const name = normalizeCreatedName(String(value), '标签名称')
+    if (tagNames.has(name)) {
+      continue
+    }
+    tagNames.add(name)
+
+    const existingTag = existingTags.find((tag) => tag.name === name)
+    if (existingTag) {
+      tagIds.push(existingTag.id)
+    } else {
+      tagIds.push(await addTag({ name }))
+    }
+  }
+
+  return tagIds
 }
 
 const handleClose = () => {
@@ -187,16 +266,20 @@ const handleSubmit = async () => {
 
   submitting.value = true
   try {
+    const subjectId = await ensureSubjectId()
+    const typeId = await ensureTypeId(subjectId)
+    const tagIds = await ensureTagIds()
+
     await addQuestion({
-      subjectId: form.subjectId,
-      typeId: form.typeId,
+      subjectId,
+      typeId,
       content: form.content.trim(),
       answer: normalizeText(form.answer),
       analysis: normalizeText(form.analysis),
       imageUrl: normalizeText(form.imageUrl),
       answerImageUrl: normalizeText(form.answerImageUrl),
       difficulty: form.difficulty,
-      tagIds: form.tagIds,
+      tagIds,
     })
     ElMessage.success('新增题目成功')
     emit('update:modelValue', false)
