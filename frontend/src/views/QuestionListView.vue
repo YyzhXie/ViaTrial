@@ -78,7 +78,7 @@
           >
             删除标签
           </el-button>
-          <el-button type="success" :icon="Plus" @click="dialogVisible = true">新增题目</el-button>
+          <el-button type="success" :icon="Plus" @click="openCreateDialog">新增题目</el-button>
         </el-form-item>
       </el-form>
     </section>
@@ -142,8 +142,9 @@
         </template>
       </el-table-column>
       <el-table-column prop="createdTime" label="创建时间" min-width="170" />
-      <el-table-column label="操作" width="96" fixed="right">
+      <el-table-column label="操作" width="140" fixed="right">
         <template #default="{ row }">
+          <el-button type="primary" link :icon="Edit" @click="openEditDialog(row)">编辑</el-button>
           <el-button type="danger" link :icon="Delete" @click="handleDelete(row.id)">删除</el-button>
         </template>
       </el-table-column>
@@ -161,7 +162,11 @@
       />
     </div>
 
-    <QuestionFormDialog v-model="dialogVisible" @success="handleQuestionCreated" />
+    <QuestionFormDialog
+      v-model="dialogVisible"
+      :question="editingQuestion"
+      @success="handleQuestionSaved"
+    />
 
     <el-dialog v-model="subjectDialogVisible" title="新增科目" width="420px" destroy-on-close>
       <el-form label-width="96px" @submit.prevent>
@@ -202,7 +207,7 @@
 </template>
 
 <script setup lang="ts">
-import { Delete, Plus, RefreshLeft, Search } from '@element-plus/icons-vue'
+import { Delete, Edit, Plus, RefreshLeft, Search } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { onMounted, reactive, ref } from 'vue'
 
@@ -220,6 +225,7 @@ import type { Tag } from '@/types/tag'
 const loading = ref(false)
 const typeLoading = ref(false)
 const dialogVisible = ref(false)
+const editingQuestion = ref<Question | null>(null)
 const subjectDialogVisible = ref(false)
 const tagDialogVisible = ref(false)
 const subjectSubmitting = ref(false)
@@ -301,6 +307,16 @@ const openTagDialog = () => {
   tagDialogVisible.value = true
 }
 
+const openCreateDialog = () => {
+  editingQuestion.value = null
+  dialogVisible.value = true
+}
+
+const openEditDialog = (question: Question) => {
+  editingQuestion.value = question
+  dialogVisible.value = true
+}
+
 const submitSubject = async () => {
   const name = subjectForm.name.trim()
   if (!name) {
@@ -375,7 +391,7 @@ const handleSizeChange = () => {
   loadQuestions()
 }
 
-const handleQuestionCreated = async () => {
+const handleQuestionSaved = async () => {
   pagination.page = 1
   await Promise.all([loadBaseData(), loadQuestions()])
 }

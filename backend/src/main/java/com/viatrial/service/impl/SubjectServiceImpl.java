@@ -21,6 +21,8 @@ import java.util.List;
 @Service
 public class SubjectServiceImpl implements SubjectService {
 
+    private static final List<String> DEFAULT_QUESTION_TYPES = List.of("选择题", "判断题", "填空题");
+
     private final SubjectMapper subjectMapper;
 
     private final QuestionTypeMapper questionTypeMapper;
@@ -52,6 +54,7 @@ public class SubjectServiceImpl implements SubjectService {
         } catch (DataIntegrityViolationException ex) {
             throw new BizException(ErrorCode.CONFLICT, "科目名称已存在");
         }
+        createDefaultQuestionTypes(subject.getId());
         return subject.getId();
     }
 
@@ -75,11 +78,30 @@ public class SubjectServiceImpl implements SubjectService {
                 new QueryWrapper<QuestionType>().eq("subject_id", id));
         Long questionCount = questionMapper.selectCount(
                 new QueryWrapper<Question>().eq("subject_id", id));
-        if (questionTypeCount > 0 || questionCount > 0) {
-            throw new BizException(ErrorCode.CONFLICT, "该科目下存在题型或题目，不能删除");
+        if (questionCount > 0) {
+            throw new BizException(ErrorCode.CONFLICT, "该科目下存在题目，不能删除");
+        }
+        if (questionTypeCount > 0) {
+            Long customQuestionTypeCount = questionTypeMapper.selectCount(
+                    new QueryWrapper<QuestionType>()
+                            .eq("subject_id", id)
+                            .notIn("name", DEFAULT_QUESTION_TYPES));
+            if (customQuestionTypeCount > 0) {
+                throw new BizException(ErrorCode.CONFLICT, "该科目下存在自定义题型，不能删除");
+            }
+            questionTypeMapper.delete(new QueryWrapper<QuestionType>().eq("subject_id", id));
         }
 
         return subjectMapper.deleteById(id) > 0;
+    }
+
+    private void createDefaultQuestionTypes(Long subjectId) {
+        for (String name : DEFAULT_QUESTION_TYPES) {
+            QuestionType questionType = new QuestionType();
+            questionType.setSubjectId(subjectId);
+            questionType.setName(name);
+            questionTypeMapper.insert(questionType);
+        }
     }
 
     private SubjectResponse toResponse(Subject subject) {

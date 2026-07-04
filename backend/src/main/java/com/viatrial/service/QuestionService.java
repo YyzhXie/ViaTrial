@@ -9,6 +9,8 @@ public interface QuestionService {
 
     Long addQuestion(QuestionAddRequest request);
 
+    Boolean updateQuestion(Long id, QuestionAddRequest request);
+
     PageResult<QuestionResponse> pageQuestions(QuestionPageRequest request);
 
     Boolean deleteQuestion(Long id);

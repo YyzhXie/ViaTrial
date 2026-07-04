@@ -174,6 +174,23 @@ ViaTrial 后端 API 前缀为 `/api/v1`。Swagger UI 地址为 `/swagger-ui.html
 
 返回：新增题目 ID。
 
+### 更新题目
+
+`PUT /api/v1/questions/{id}`
+
+请求体：与新增题目一致。
+
+规则：
+
+- 题目不存在返回 404。
+- `subjectId`、`typeId`、`content` 必填。
+- `typeId` 必须属于 `subjectId`。
+- `difficulty` 只能为 1、2、3；不传时默认 1。
+- `tagIds` 可为空；传入时不能重复，且标签必须存在。
+- 更新题目时会替换题目和标签的关联记录。
+
+返回：`true`。
+
 ### 分页查询题目
 
 `GET /api/v1/questions/page`
@@ -224,8 +241,8 @@ ViaTrial 后端 API 前缀为 `/api/v1`。Swagger UI 地址为 `/swagger-ui.html
 - `typeCountMap` 不能为空。
 - 题型 ID 不能为空，且必须属于 `subjectId`。
 - 每个题型的抽题数量必须大于 0。
-- 当某题型题量不足时，返回该题型下全部题目，并在 `warnings` 中说明。
-- 当某题型没有题目时，不返回该题型的题目，并在 `warnings` 中说明。
+- 当某题型题量不足时，返回该题型下全部题目，并在 `warnings` 中给出中文说明。
+- 当某题型没有题目时，不返回该题型的题目，并在 `warnings` 中给出中文说明。
 
 返回：
 

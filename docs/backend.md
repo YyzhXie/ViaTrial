@@ -62,7 +62,7 @@ mvn package
 生成 jar：
 
 ```text
-backend/target/viatrial-backend-0.1.2.jar
+backend/target/viatrial-backend-0.1.3.jar
 ```
 
 项目根目录启动：
@@ -80,7 +80,7 @@ start.bat
 | `SubjectController` / `SubjectService` | 科目新增、列表查询、删除 |
 | `QuestionTypeController` / `QuestionTypeService` | 按科目维护题型 |
 | `TagController` / `TagService` | 标签新增、列表查询、删除 |
-| `QuestionController` / `QuestionService` | 题目录入、分页筛选、删除 |
+| `QuestionController` / `QuestionService` | 题目录入、编辑、分页筛选、删除 |
 | `PaperController` / `PaperService` | 按单科目下的题型抽题数量随机生成试卷 |
 | `GlobalExceptionHandler` | 将校验异常、业务异常、系统异常转换为统一响应 |
 
@@ -96,7 +96,8 @@ start.bat
 - 题目难度只允许 `1`、`2`、`3`，未传时默认 `1`。
 - 题目标签 ID 不能重复，且必须全部存在。
 - 删除题目会先删除题目和标签的关联记录。
-- 生成试卷仅支持单科目；每个题型的抽题数量必须大于 0，且题型必须属于选定科目；题量不足时返回已有题目并给出 warning。
+- 新增科目时会自动创建“选择题”“判断题”“填空题”三种默认题型。
+- 生成试卷仅支持单科目；每个题型的抽题数量必须大于 0，且题型必须属于选定科目；题量不足时返回已有题目并给出中文 warning。
 
 ## 响应与异常
 

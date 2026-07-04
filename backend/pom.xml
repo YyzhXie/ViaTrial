@@ -13,7 +13,7 @@
 
     <groupId>com.viatrial</groupId>
     <artifactId>viatrial-backend</artifactId>
-    <version>0.1.2</version>
+    <version>0.1.3</version>
     <name>viatrial-backend</name>
     <description>ViaTrial backend service</description>
 

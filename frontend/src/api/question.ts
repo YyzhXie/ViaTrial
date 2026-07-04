@@ -11,6 +11,14 @@ export function addQuestion(data: QuestionAddRequest): Promise<number> {
   })
 }
 
+export function updateQuestion(id: number, data: QuestionAddRequest): Promise<boolean> {
+  return requestData<boolean>({
+    url: `/questions/${id}`,
+    method: 'PUT',
+    data,
+  })
+}
+
 export function pageQuestions(params: QuestionPageRequest): Promise<PageResult<Question>> {
   return requestData<PageResult<Question>>({
     url: '/questions/page',

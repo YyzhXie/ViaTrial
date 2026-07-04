@@ -23,6 +23,7 @@ import com.viatrial.service.QuestionService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
@@ -60,19 +61,7 @@ public class QuestionServiceImpl implements QuestionService {
     @Override
     @Transactional
     public Long addQuestion(QuestionAddRequest request) {
-        Subject subject = subjectMapper.selectById(request.getSubjectId());
-        if (subject == null) {
-            throw new BizException(ErrorCode.NOT_FOUND, "Subject does not exist");
-        }
-
-        QuestionType questionType = questionTypeMapper.selectById(request.getTypeId());
-        if (questionType == null) {
-            throw new BizException(ErrorCode.NOT_FOUND, "Question type does not exist");
-        }
-        if (!questionType.getSubjectId().equals(request.getSubjectId())) {
-            throw new BizException(ErrorCode.PARAM_ERROR, "Question type does not belong to subject");
-        }
-
+        validateSubjectAndQuestionType(request.getSubjectId(), request.getTypeId());
         List<Long> tagIds = normalizeTagIds(request.getTagIds());
         validateTags(tagIds);
 
@@ -94,6 +83,39 @@ public class QuestionServiceImpl implements QuestionService {
             questionTagMapper.insert(questionTag);
         }
         return question.getId();
+    }
+
+    @Override
+    @Transactional
+    public Boolean updateQuestion(Long id, QuestionAddRequest request) {
+        Question question = questionMapper.selectById(id);
+        if (question == null) {
+            throw new BizException(ErrorCode.NOT_FOUND, "Question does not exist");
+        }
+
+        validateSubjectAndQuestionType(request.getSubjectId(), request.getTypeId());
+        List<Long> tagIds = normalizeTagIds(request.getTagIds());
+        validateTags(tagIds);
+
+        question.setSubjectId(request.getSubjectId());
+        question.setTypeId(request.getTypeId());
+        question.setContent(request.getContent());
+        question.setAnswer(request.getAnswer());
+        question.setAnalysis(request.getAnalysis());
+        question.setImageUrl(request.getImageUrl());
+        question.setAnswerImageUrl(request.getAnswerImageUrl());
+        question.setDifficulty(request.getDifficulty() == null ? 1 : request.getDifficulty());
+        question.setUpdatedTime(LocalDateTime.now());
+        questionMapper.updateById(question);
+
+        questionTagMapper.delete(new QueryWrapper<QuestionTag>().eq("question_id", id));
+        for (Long tagId : tagIds) {
+            QuestionTag questionTag = new QuestionTag();
+            questionTag.setQuestionId(id);
+            questionTag.setTagId(tagId);
+            questionTagMapper.insert(questionTag);
+        }
+        return true;
     }
 
     @Override
@@ -178,6 +200,21 @@ public class QuestionServiceImpl implements QuestionService {
             throw new BizException(ErrorCode.PARAM_ERROR, "Tag IDs cannot contain duplicates");
         }
         return new ArrayList<>(tagIds);
+    }
+
+    private void validateSubjectAndQuestionType(Long subjectId, Long typeId) {
+        Subject subject = subjectMapper.selectById(subjectId);
+        if (subject == null) {
+            throw new BizException(ErrorCode.NOT_FOUND, "Subject does not exist");
+        }
+
+        QuestionType questionType = questionTypeMapper.selectById(typeId);
+        if (questionType == null) {
+            throw new BizException(ErrorCode.NOT_FOUND, "Question type does not exist");
+        }
+        if (!questionType.getSubjectId().equals(subjectId)) {
+            throw new BizException(ErrorCode.PARAM_ERROR, "Question type does not belong to subject");
+        }
     }
 
     private void validateTags(List<Long> tagIds) {

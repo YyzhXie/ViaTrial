@@ -80,15 +80,15 @@ public class PaperServiceImpl implements PaperService {
                     .eq("subject_id", request.getSubjectId())
                     .eq("type_id", typeId));
             if (total == 0) {
-                warnings.add("Question type \"" + questionType.getName() + "\" has no questions.");
+                warnings.add("题型“" + questionType.getName() + "”暂无题目。");
             } else if (total < requestedCount) {
                 selectedQuestions.addAll(questionMapper.selectList(
                         new QueryWrapper<Question>()
                                 .eq("subject_id", request.getSubjectId())
                                 .eq("type_id", typeId)
                                 .orderByAsc("id")));
-                warnings.add("Question type \"" + questionType.getName() + "\" has insufficient questions. Requested "
-                        + requestedCount + ", actual " + total + ".");
+                warnings.add("题型“" + questionType.getName() + "”题量不足，要求 "
+                        + requestedCount + " 题，实际 " + total + " 题。");
             } else {
                 selectedQuestions.addAll(questionMapper.selectRandomBySubjectIdAndTypeId(
                         request.getSubjectId(), typeId, requestedCount));

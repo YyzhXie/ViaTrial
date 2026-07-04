@@ -1,7 +1,7 @@
 <template>
   <el-dialog
     :model-value="modelValue"
-    title="新增题目"
+    :title="dialogTitle"
     width="720px"
     destroy-on-close
     @close="handleClose"
@@ -99,18 +99,19 @@
 import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
 import { computed, reactive, ref, watch } from 'vue'
 
-import { addQuestion } from '@/api/question'
+import { addQuestion, updateQuestion } from '@/api/question'
 import { addQuestionType, listQuestionTypes } from '@/api/questionType'
 import { addSubject, listSubjects } from '@/api/subject'
 import { addTag, listTags } from '@/api/tag'
 import TagSelector from '@/components/TagSelector.vue'
-import type { QuestionAddRequest } from '@/types/question'
+import type { Question, QuestionAddRequest } from '@/types/question'
 import type { QuestionType } from '@/types/questionType'
 import type { Subject } from '@/types/subject'
 import type { Tag } from '@/types/tag'
 
 const props = defineProps<{
   modelValue: boolean
+  question?: Question | null
 }>()
 
 const emit = defineEmits<{
@@ -142,6 +143,7 @@ const subjects = ref<Subject[]>([])
 const questionTypes = ref<QuestionType[]>([])
 const typeLoading = ref(false)
 const submitting = ref(false)
+const dialogTitle = computed(() => (props.question ? '编辑题目' : '新增题目'))
 
 const selectedTagIds = computed<Array<number | string>>({
   get: () => form.tagIds || [],
@@ -160,6 +162,22 @@ const rules: FormRules<QuestionFormState> = {
 const resetForm = () => {
   Object.assign(form, createInitialForm())
   questionTypes.value = []
+  formRef.value?.clearValidate()
+}
+
+const fillForm = async (question: Question) => {
+  Object.assign(form, {
+    subjectId: question.subjectId,
+    typeId: question.typeId,
+    content: question.content,
+    answer: question.answer ?? '',
+    analysis: question.analysis ?? '',
+    imageUrl: question.imageUrl ?? '',
+    answerImageUrl: question.answerImageUrl ?? '',
+    difficulty: question.difficulty,
+    tagIds: question.tags.map((tag) => tag.id),
+  })
+  await loadQuestionTypes(question.subjectId)
   formRef.value?.clearValidate()
 }
 
@@ -270,7 +288,7 @@ const handleSubmit = async () => {
     const typeId = await ensureTypeId(subjectId)
     const tagIds = await ensureTagIds()
 
-    await addQuestion({
+    const payload = {
       subjectId,
       typeId,
       content: form.content.trim(),
@@ -280,8 +298,15 @@ const handleSubmit = async () => {
       answerImageUrl: normalizeText(form.answerImageUrl),
       difficulty: form.difficulty,
       tagIds,
-    })
-    ElMessage.success('新增题目成功')
+    }
+
+    if (props.question) {
+      await updateQuestion(props.question.id, payload)
+      ElMessage.success('编辑题目成功')
+    } else {
+      await addQuestion(payload)
+      ElMessage.success('新增题目成功')
+    }
     emit('update:modelValue', false)
     emit('success')
   } finally {
@@ -295,6 +320,9 @@ watch(
     if (visible) {
       resetForm()
       await loadSubjects()
+      if (props.question) {
+        await fillForm(props.question)
+      }
     }
   },
 )
