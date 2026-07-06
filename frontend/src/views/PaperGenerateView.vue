@@ -162,7 +162,8 @@
               />
 
               <div v-if="submitted && !isCurrentCorrect" class="answer-tip">
-                参考答案：{{ currentQuestion?.answer || '暂无参考答案' }}
+                <span>参考答案：</span>
+                <LatexRenderer :content="currentQuestion?.answer || '暂无参考答案'" />
               </div>
               <div v-if="submitted && currentQuestion?.analysis" class="answer-analysis">
                 <h3>解析</h3>

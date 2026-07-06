@@ -335,6 +335,10 @@ body {
   border: 1px solid #8fc99a;
   background: #e7f5e8;
   color: #356742;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: baseline;
 }
 
 .answer-analysis {

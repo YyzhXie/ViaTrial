@@ -248,7 +248,7 @@ ViaTrial 后端 API 前缀为 `/api/v1`。Swagger UI 地址为 `/swagger-ui.html
 
 ```json
 {
-  "paperId": "PAPER-20260629120000-ABC123",
+  "paperId": "高等数学-20260706120000",
   "totalRequested": 8,
   "totalActual": 7,
   "warnings": [],

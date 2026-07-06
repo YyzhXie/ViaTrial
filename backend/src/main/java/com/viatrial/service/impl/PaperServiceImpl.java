@@ -21,7 +21,6 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 
 @Service
 public class PaperServiceImpl implements PaperService {
@@ -101,7 +100,7 @@ public class PaperServiceImpl implements PaperService {
                 .toList();
 
         PaperGenerateResponse response = new PaperGenerateResponse();
-        response.setPaperId(generatePaperId());
+        response.setPaperId(generatePaperId(subject.getName()));
         response.setTotalRequested(totalRequested);
         response.setTotalActual(questions.size());
         response.setWarnings(warnings);
@@ -126,8 +125,7 @@ public class PaperServiceImpl implements PaperService {
         return response;
     }
 
-    private String generatePaperId() {
-        return "PAPER-" + PAPER_ID_TIME_FORMATTER.format(LocalDateTime.now()) + "-"
-                + UUID.randomUUID().toString().replace("-", "").substring(0, 6).toUpperCase();
+    private String generatePaperId(String subjectName) {
+        return subjectName + "-" + PAPER_ID_TIME_FORMATTER.format(LocalDateTime.now());
     }
 }
