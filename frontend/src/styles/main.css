@@ -63,6 +63,12 @@ body {
   gap: 8px 0;
 }
 
+.filter-form .el-form-item:last-child .el-form-item__content {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 .filter-control {
   width: 180px;
 }
@@ -73,6 +79,13 @@ body {
 
 .question-table .cell {
   white-space: normal;
+}
+
+.table-actions {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 8px;
+  align-items: center;
 }
 
 .tag-list,
@@ -188,6 +201,216 @@ body {
   color: #4b5563;
 }
 
+.manage-alert {
+  margin-bottom: 12px;
+}
+
+.paper-action-row {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 16px;
+}
+
+.preview-options,
+.practice-options {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.preview-option,
+.practice-option {
+  border: 1px solid #e6e0d7;
+  border-radius: 999px;
+  background: #fff;
+  color: #3d3a36;
+}
+
+.preview-option {
+  padding: 9px 14px;
+}
+
+.practice-card {
+  border: 1px solid #ede8e0;
+  border-radius: 8px;
+  background: #fcfaf7;
+  padding: 22px 24px;
+}
+
+.practice-header,
+.practice-nav,
+.answer-card-title,
+.practice-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.q-number,
+.page-info {
+  border-radius: 999px;
+  background: #eae5dd;
+  padding: 4px 16px;
+  color: #4f4a44;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.q-status {
+  color: #8a8580;
+  font-size: 14px;
+}
+
+.q-status.answered,
+.q-status.correct {
+  color: #4f7a5c;
+}
+
+.q-status.wrong {
+  color: #b34c60;
+}
+
+.practice-question {
+  margin-top: 18px;
+  color: #2f2c28;
+  font-size: 16px;
+  line-height: 1.7;
+}
+
+.practice-option {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  min-height: 42px;
+  padding: 10px 16px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, box-shadow 0.1s;
+}
+
+.practice-option:hover {
+  background: #f5f1eb;
+  border-color: #cdc4b8;
+}
+
+.practice-option.selected {
+  background: #f0ebe3;
+  border-color: #b8aa98;
+  box-shadow: 0 0 0 2px #d6cdc0;
+}
+
+.practice-option.correct {
+  background: #e7f5e8;
+  border-color: #8fc99a;
+  box-shadow: 0 0 0 2px #c9e8cd;
+}
+
+.practice-option.wrong {
+  background: #fde8ef;
+  border-color: #e59aaa;
+  box-shadow: 0 0 0 2px #f7c8d5;
+}
+
+.practice-option input {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  accent-color: #8f7e6b;
+  flex: 0 0 auto;
+}
+
+.text-answer {
+  margin-top: 14px;
+}
+
+.answer-tip,
+.answer-analysis {
+  margin-top: 14px;
+  border-radius: 8px;
+  padding: 10px 14px;
+}
+
+.answer-tip {
+  border: 1px solid #8fc99a;
+  background: #e7f5e8;
+  color: #356742;
+}
+
+.answer-analysis {
+  border: 1px solid #e6e0d7;
+  background: #fff;
+}
+
+.answer-analysis h3 {
+  margin: 0 0 8px;
+  font-size: 14px;
+  color: #4b5563;
+}
+
+.practice-nav,
+.answer-card,
+.practice-actions,
+.result-message {
+  margin-top: 18px;
+}
+
+.answer-card {
+  border-top: 2px solid #e8e3da;
+  padding-top: 16px;
+}
+
+.answer-card-title {
+  color: #6b6660;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.answer-card-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.answer-card-num {
+  display: flex;
+  width: 38px;
+  height: 38px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: #f2eee8;
+  color: #4f4a44;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.answer-card-num.active {
+  background: #d6cdc0;
+  border-color: #b8aa98;
+  color: #2d2823;
+}
+
+.answer-card-num.answered {
+  background: #c8bcae;
+  border-color: #a69583;
+  color: #2d2823;
+}
+
+.answer-card-num.correct {
+  background: #dff3e2;
+  border-color: #8fc99a;
+  color: #285c35;
+}
+
+.answer-card-num.wrong {
+  background: #fde3ec;
+  border-color: #e59aaa;
+  color: #8b3347;
+}
+
 @media (max-width: 960px) {
   .paper-layout,
   .result-summary {
@@ -200,5 +423,18 @@ body {
     height: auto;
     gap: 0;
     padding: 12px 16px 0;
+  }
+
+  .filter-control {
+    width: min(100%, 220px);
+  }
+
+  .practice-card {
+    padding: 16px;
+  }
+
+  .practice-actions,
+  .practice-nav {
+    justify-content: center;
   }
 }

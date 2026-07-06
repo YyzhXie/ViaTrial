@@ -85,7 +85,7 @@ class SubjectControllerTest {
     }
 
     @Test
-    void shouldReturnConflictWhenSubjectHasQuestionType() throws Exception {
+    void shouldDeleteSubjectWithQuestionType() throws Exception {
         String subjectName = "__subject_conflict_" + UUID.randomUUID();
         String typeName = "__type_conflict_" + UUID.randomUUID();
         Subject subject = new Subject();
@@ -100,9 +100,12 @@ class SubjectControllerTest {
             questionTypeMapper.insert(questionType);
 
             mockMvc.perform(delete("/api/v1/subjects/{id}", subject.getId()))
-                    .andExpect(status().isConflict())
-                    .andExpect(jsonPath("$.code").value(409))
-                    .andExpect(jsonPath("$.data").doesNotExist());
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.code").value(200))
+                    .andExpect(jsonPath("$.data").value(true));
+
+            org.junit.jupiter.api.Assertions.assertNull(subjectMapper.selectById(subject.getId()));
+            org.junit.jupiter.api.Assertions.assertNull(questionTypeMapper.selectById(questionType.getId()));
         } finally {
             if (questionType.getId() != null) {
                 questionTypeMapper.deleteById(questionType.getId());

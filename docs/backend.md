@@ -62,7 +62,7 @@ mvn package
 生成 jar：
 
 ```text
-backend/target/viatrial-backend-0.1.3.jar
+backend/target/viatrial-backend-0.2.0.jar
 ```
 
 项目根目录启动：
@@ -81,7 +81,7 @@ start.bat
 | `QuestionTypeController` / `QuestionTypeService` | 按科目维护题型 |
 | `TagController` / `TagService` | 标签新增、列表查询、删除 |
 | `QuestionController` / `QuestionService` | 题目录入、编辑、分页筛选、删除 |
-| `PaperController` / `PaperService` | 按单科目下的题型抽题数量随机生成试卷 |
+| `PaperController` / `PaperService` | 按单科目下的题型抽题数量随机预览试卷 |
 | `GlobalExceptionHandler` | 将校验异常、业务异常、系统异常转换为统一响应 |
 
 ## 业务约束
@@ -89,15 +89,15 @@ start.bat
 - 科目名称全局唯一，长度不超过 50 个字符。
 - 同一科目下题型名称唯一，长度不超过 50 个字符。
 - 标签名称全局唯一，长度不超过 50 个字符。
-- 删除科目前，科目下不能存在题型或题目。
+- 删除科目会同时删除该科目下的题目、题型和题目标签关联。
 - 删除题型前，该题型下不能存在题目。
-- 删除标签前，该标签不能被任何题目使用。
+- 删除标签会先删除题目和标签的关联记录，不会删除题目本身。
 - 新增题目时，题型必须属于指定科目。
 - 题目难度只允许 `1`、`2`、`3`，未传时默认 `1`。
 - 题目标签 ID 不能重复，且必须全部存在。
 - 删除题目会先删除题目和标签的关联记录。
 - 新增科目时会自动创建“选择题”“判断题”“填空题”三种默认题型。
-- 生成试卷仅支持单科目；每个题型的抽题数量必须大于 0，且题型必须属于选定科目；题量不足时返回已有题目并给出中文 warning。
+- 预览试卷仅支持单科目；每个题型的抽题数量必须大于 0，且题型必须属于选定科目；题量不足时返回已有题目并给出中文 warning。
 
 ## 响应与异常
 

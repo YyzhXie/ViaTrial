@@ -10,7 +10,7 @@
           class="app-menu"
         >
           <el-menu-item index="/">题目列表</el-menu-item>
-          <el-menu-item index="/paper">生成试卷</el-menu-item>
+          <el-menu-item index="/paper">预览试卷</el-menu-item>
         </el-menu>
       </el-header>
       <el-main>

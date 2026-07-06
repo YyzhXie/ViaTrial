@@ -60,24 +60,28 @@
         <el-form-item>
           <el-button type="primary" :icon="Search" @click="handleSearch">查询</el-button>
           <el-button :icon="RefreshLeft" @click="handleReset">重置</el-button>
-          <el-button :icon="Plus" @click="openSubjectDialog">新增科目</el-button>
-          <el-button
-            type="danger"
-            :icon="Delete"
-            :disabled="!filters.subjectId"
-            @click="handleDeleteSubject"
-          >
-            删除科目
-          </el-button>
-          <el-button :icon="Plus" @click="openTagDialog">新增标签</el-button>
-          <el-button
-            type="danger"
-            :icon="Delete"
-            :disabled="!filters.tagId"
-            @click="handleDeleteTag"
-          >
-            删除标签
-          </el-button>
+          <el-dropdown trigger="click" @command="handleSubjectCommand">
+            <el-button :icon="Collection">
+              科目操作<el-icon class="el-icon--right"><ArrowDown /></el-icon>
+            </el-button>
+            <template #dropdown>
+              <el-dropdown-menu>
+                <el-dropdown-item command="add" :icon="Plus">新增科目</el-dropdown-item>
+                <el-dropdown-item command="manage" :icon="Delete">删除科目</el-dropdown-item>
+              </el-dropdown-menu>
+            </template>
+          </el-dropdown>
+          <el-dropdown trigger="click" @command="handleTagCommand">
+            <el-button :icon="PriceTag">
+              标签操作<el-icon class="el-icon--right"><ArrowDown /></el-icon>
+            </el-button>
+            <template #dropdown>
+              <el-dropdown-menu>
+                <el-dropdown-item command="add" :icon="Plus">新增标签</el-dropdown-item>
+                <el-dropdown-item command="manage" :icon="Delete">删除标签</el-dropdown-item>
+              </el-dropdown-menu>
+            </template>
+          </el-dropdown>
           <el-button type="success" :icon="Plus" @click="openCreateDialog">新增题目</el-button>
         </el-form-item>
       </el-form>
@@ -142,10 +146,12 @@
         </template>
       </el-table-column>
       <el-table-column prop="createdTime" label="创建时间" min-width="170" />
-      <el-table-column label="操作" width="140" fixed="right">
+      <el-table-column label="操作" width="170" fixed="right">
         <template #default="{ row }">
-          <el-button type="primary" link :icon="Edit" @click="openEditDialog(row)">编辑</el-button>
-          <el-button type="danger" link :icon="Delete" @click="handleDelete(row.id)">删除</el-button>
+          <div class="table-actions">
+            <el-button type="primary" link :icon="Edit" @click="openEditDialog(row)">编辑</el-button>
+            <el-button type="danger" link :icon="Delete" @click="handleDelete(row.id)">删除</el-button>
+          </div>
         </template>
       </el-table-column>
     </el-table>
@@ -203,11 +209,89 @@
         <el-button type="primary" :loading="tagSubmitting" @click="submitTag">保存</el-button>
       </template>
     </el-dialog>
+
+    <el-dialog v-model="subjectManageVisible" title="删除科目" width="680px">
+      <el-alert
+        title="删除科目会同时删除该科目下的题目、题型和题目标签关联。"
+        type="warning"
+        show-icon
+        :closable="false"
+        class="manage-alert"
+      />
+      <el-table
+        :data="subjects"
+        border
+        row-key="id"
+        max-height="360"
+        @selection-change="handleSubjectSelectionChange"
+      >
+        <el-table-column type="selection" width="48" />
+        <el-table-column prop="name" label="科目名称" min-width="240" />
+        <el-table-column label="操作" width="120" align="center">
+          <template #default="{ row }">
+            <el-button type="danger" link :icon="Delete" @click="deleteOneSubject(row.id)">
+              删除
+            </el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+      <template #footer>
+        <el-button @click="subjectManageVisible = false">关闭</el-button>
+        <el-button
+          type="danger"
+          :icon="Delete"
+          :disabled="!selectedSubjectIds.length"
+          :loading="subjectBatchDeleting"
+          @click="deleteSelectedSubjects"
+        >
+          批量删除
+        </el-button>
+      </template>
+    </el-dialog>
+
+    <el-dialog v-model="tagManageVisible" title="删除标签" width="680px">
+      <el-alert
+        title="删除标签会先解除题目上的标签关联，不会删除题目本身。"
+        type="warning"
+        show-icon
+        :closable="false"
+        class="manage-alert"
+      />
+      <el-table
+        :data="tags"
+        border
+        row-key="id"
+        max-height="360"
+        @selection-change="handleTagSelectionChange"
+      >
+        <el-table-column type="selection" width="48" />
+        <el-table-column prop="name" label="标签名称" min-width="240" />
+        <el-table-column label="操作" width="120" align="center">
+          <template #default="{ row }">
+            <el-button type="danger" link :icon="Delete" @click="deleteOneTag(row.id)">
+              删除
+            </el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+      <template #footer>
+        <el-button @click="tagManageVisible = false">关闭</el-button>
+        <el-button
+          type="danger"
+          :icon="Delete"
+          :disabled="!selectedTagIds.length"
+          :loading="tagBatchDeleting"
+          @click="deleteSelectedTags"
+        >
+          批量删除
+        </el-button>
+      </template>
+    </el-dialog>
   </main>
 </template>
 
 <script setup lang="ts">
-import { Delete, Edit, Plus, RefreshLeft, Search } from '@element-plus/icons-vue'
+import { ArrowDown, Collection, Delete, Edit, Plus, PriceTag, RefreshLeft, Search } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { onMounted, reactive, ref } from 'vue'
 
@@ -228,12 +312,18 @@ const dialogVisible = ref(false)
 const editingQuestion = ref<Question | null>(null)
 const subjectDialogVisible = ref(false)
 const tagDialogVisible = ref(false)
+const subjectManageVisible = ref(false)
+const tagManageVisible = ref(false)
 const subjectSubmitting = ref(false)
 const tagSubmitting = ref(false)
+const subjectBatchDeleting = ref(false)
+const tagBatchDeleting = ref(false)
 const subjects = ref<Subject[]>([])
 const questionTypes = ref<QuestionType[]>([])
 const tags = ref<Tag[]>([])
 const questions = ref<Question[]>([])
+const selectedSubjectIds = ref<number[]>([])
+const selectedTagIds = ref<number[]>([])
 
 const subjectForm = reactive({
   name: '',
@@ -305,6 +395,24 @@ const openSubjectDialog = () => {
 const openTagDialog = () => {
   tagForm.name = ''
   tagDialogVisible.value = true
+}
+
+const handleSubjectCommand = (command: string) => {
+  if (command === 'add') {
+    openSubjectDialog()
+  } else if (command === 'manage') {
+    selectedSubjectIds.value = []
+    subjectManageVisible.value = true
+  }
+}
+
+const handleTagCommand = (command: string) => {
+  if (command === 'add') {
+    openTagDialog()
+  } else if (command === 'manage') {
+    selectedTagIds.value = []
+    tagManageVisible.value = true
+  }
 }
 
 const openCreateDialog = () => {
@@ -396,20 +504,7 @@ const handleQuestionSaved = async () => {
   await Promise.all([loadBaseData(), loadQuestions()])
 }
 
-const handleDeleteSubject = async () => {
-  if (!filters.subjectId) {
-    return
-  }
-
-  const subject = subjects.value.find((item) => item.id === filters.subjectId)
-  await ElMessageBox.confirm(`确定删除科目“${subject?.name ?? filters.subjectId}”吗？`, '删除确认', {
-    confirmButtonText: '删除',
-    cancelButtonText: '取消',
-    type: 'warning',
-  })
-
-  await deleteSubject(filters.subjectId)
-  ElMessage.success('删除科目成功')
+const refreshAfterSubjectDelete = async () => {
   filters.subjectId = undefined
   filters.typeId = undefined
   questionTypes.value = []
@@ -417,23 +512,92 @@ const handleDeleteSubject = async () => {
   await Promise.all([loadBaseData(), loadQuestions()])
 }
 
-const handleDeleteTag = async () => {
-  if (!filters.tagId) {
-    return
-  }
+const refreshAfterTagDelete = async () => {
+  filters.tagId = undefined
+  pagination.page = 1
+  await Promise.all([loadBaseData(), loadQuestions()])
+}
 
-  const tag = tags.value.find((item) => item.id === filters.tagId)
-  await ElMessageBox.confirm(`确定删除标签“${tag?.name ?? filters.tagId}”吗？`, '删除确认', {
+const handleSubjectSelectionChange = (selection: Subject[]) => {
+  selectedSubjectIds.value = selection.map((item) => item.id)
+}
+
+const handleTagSelectionChange = (selection: Tag[]) => {
+  selectedTagIds.value = selection.map((item) => item.id)
+}
+
+const deleteOneSubject = async (id: number) => {
+  const subject = subjects.value.find((item) => item.id === id)
+  await ElMessageBox.confirm(`确定删除科目“${subject?.name ?? id}”及其下所有题目、题型和关联吗？`, '删除确认', {
     confirmButtonText: '删除',
     cancelButtonText: '取消',
     type: 'warning',
   })
 
-  await deleteTag(filters.tagId)
+  await deleteSubject(id)
+  ElMessage.success('删除科目成功')
+  await refreshAfterSubjectDelete()
+}
+
+const deleteSelectedSubjects = async () => {
+  if (!selectedSubjectIds.value.length) {
+    return
+  }
+
+  await ElMessageBox.confirm(`确定删除选中的 ${selectedSubjectIds.value.length} 个科目及其下所有题目、题型和关联吗？`, '批量删除确认', {
+    confirmButtonText: '删除',
+    cancelButtonText: '取消',
+    type: 'warning',
+  })
+
+  subjectBatchDeleting.value = true
+  try {
+    for (const id of selectedSubjectIds.value) {
+      await deleteSubject(id)
+    }
+    ElMessage.success('批量删除科目成功')
+    selectedSubjectIds.value = []
+    await refreshAfterSubjectDelete()
+  } finally {
+    subjectBatchDeleting.value = false
+  }
+}
+
+const deleteOneTag = async (id: number) => {
+  const tag = tags.value.find((item) => item.id === id)
+  await ElMessageBox.confirm(`确定删除标签“${tag?.name ?? id}”并解除题目关联吗？`, '删除确认', {
+    confirmButtonText: '删除',
+    cancelButtonText: '取消',
+    type: 'warning',
+  })
+
+  await deleteTag(id)
   ElMessage.success('删除标签成功')
-  filters.tagId = undefined
-  pagination.page = 1
-  await Promise.all([loadBaseData(), loadQuestions()])
+  await refreshAfterTagDelete()
+}
+
+const deleteSelectedTags = async () => {
+  if (!selectedTagIds.value.length) {
+    return
+  }
+
+  await ElMessageBox.confirm(`确定删除选中的 ${selectedTagIds.value.length} 个标签并解除题目关联吗？`, '批量删除确认', {
+    confirmButtonText: '删除',
+    cancelButtonText: '取消',
+    type: 'warning',
+  })
+
+  tagBatchDeleting.value = true
+  try {
+    for (const id of selectedTagIds.value) {
+      await deleteTag(id)
+    }
+    ElMessage.success('批量删除标签成功')
+    selectedTagIds.value = []
+    await refreshAfterTagDelete()
+  } finally {
+    tagBatchDeleting.value = false
+  }
 }
 
 const handleDelete = async (id: number) => {

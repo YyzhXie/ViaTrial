@@ -23,7 +23,7 @@ public class PaperController {
         this.paperService = paperService;
     }
 
-    @Operation(summary = "生成试卷")
+    @Operation(summary = "预览试卷")
     @PostMapping("/generate")
     public Result<PaperGenerateResponse> generatePaper(@Valid @RequestBody PaperGenerateRequest request) {
         return Result.success(paperService.generatePaper(request));

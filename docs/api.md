@@ -71,7 +71,7 @@ ViaTrial 后端 API 前缀为 `/api/v1`。Swagger UI 地址为 `/swagger-ui.html
 
 `DELETE /api/v1/subjects/{id}`
 
-规则：科目不存在返回 404；科目下存在题型或题目时返回 409。
+规则：科目不存在返回 404；删除科目会同时删除该科目下的题目、题型和题目标签关联。
 
 返回：`true`。
 
@@ -138,7 +138,7 @@ ViaTrial 后端 API 前缀为 `/api/v1`。Swagger UI 地址为 `/swagger-ui.html
 
 `DELETE /api/v1/tags/{id}`
 
-规则：标签不存在返回 404；标签仍被题目使用时返回 409。
+规则：标签不存在返回 404；删除标签会先删除题目和标签的关联记录，不会删除题目本身。
 
 返回：`true`。
 
@@ -219,7 +219,7 @@ ViaTrial 后端 API 前缀为 `/api/v1`。Swagger UI 地址为 `/swagger-ui.html
 
 ## 组卷管理
 
-### 生成试卷
+### 预览试卷
 
 `POST /api/v1/papers/generate`
 
@@ -244,7 +244,7 @@ ViaTrial 后端 API 前缀为 `/api/v1`。Swagger UI 地址为 `/swagger-ui.html
 - 当某题型题量不足时，返回该题型下全部题目，并在 `warnings` 中给出中文说明。
 - 当某题型没有题目时，不返回该题型的题目，并在 `warnings` 中给出中文说明。
 
-返回：
+返回：前端可基于返回题目进入做题模式。
 
 ```json
 {

@@ -63,11 +63,7 @@ public class TagServiceImpl implements TagService {
             throw new BizException(ErrorCode.NOT_FOUND, "Tag does not exist");
         }
 
-        Long usageCount = questionTagMapper.selectCount(new QueryWrapper<QuestionTag>().eq("tag_id", id));
-        if (usageCount > 0) {
-            throw new BizException(ErrorCode.CONFLICT, "Tag is still used by questions");
-        }
-
+        questionTagMapper.delete(new QueryWrapper<QuestionTag>().eq("tag_id", id));
         return tagMapper.deleteById(id) > 0;
     }
 }

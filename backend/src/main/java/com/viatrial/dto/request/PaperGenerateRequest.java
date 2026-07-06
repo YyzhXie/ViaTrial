@@ -6,7 +6,7 @@ import jakarta.validation.constraints.NotNull;
 
 import java.util.Map;
 
-@Schema(description = "生成试卷请求")
+@Schema(description = "预览试卷请求")
 public class PaperGenerateRequest {
 
     @NotNull(message = "科目ID不能为空")

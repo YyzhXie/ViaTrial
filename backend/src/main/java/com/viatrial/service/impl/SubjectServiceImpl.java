@@ -6,9 +6,11 @@ import com.viatrial.common.ErrorCode;
 import com.viatrial.dto.request.SubjectAddRequest;
 import com.viatrial.dto.response.SubjectResponse;
 import com.viatrial.entity.Question;
+import com.viatrial.entity.QuestionTag;
 import com.viatrial.entity.QuestionType;
 import com.viatrial.entity.Subject;
 import com.viatrial.mapper.QuestionMapper;
+import com.viatrial.mapper.QuestionTagMapper;
 import com.viatrial.mapper.QuestionTypeMapper;
 import com.viatrial.mapper.SubjectMapper;
 import com.viatrial.service.SubjectService;
@@ -29,12 +31,16 @@ public class SubjectServiceImpl implements SubjectService {
 
     private final QuestionMapper questionMapper;
 
+    private final QuestionTagMapper questionTagMapper;
+
     public SubjectServiceImpl(SubjectMapper subjectMapper,
                               QuestionTypeMapper questionTypeMapper,
-                              QuestionMapper questionMapper) {
+                              QuestionMapper questionMapper,
+                              QuestionTagMapper questionTagMapper) {
         this.subjectMapper = subjectMapper;
         this.questionTypeMapper = questionTypeMapper;
         this.questionMapper = questionMapper;
+        this.questionTagMapper = questionTagMapper;
     }
 
     @Override
@@ -74,24 +80,18 @@ public class SubjectServiceImpl implements SubjectService {
             throw new BizException(ErrorCode.NOT_FOUND);
         }
 
-        Long questionTypeCount = questionTypeMapper.selectCount(
-                new QueryWrapper<QuestionType>().eq("subject_id", id));
-        Long questionCount = questionMapper.selectCount(
-                new QueryWrapper<Question>().eq("subject_id", id));
-        if (questionCount > 0) {
-            throw new BizException(ErrorCode.CONFLICT, "该科目下存在题目，不能删除");
-        }
-        if (questionTypeCount > 0) {
-            Long customQuestionTypeCount = questionTypeMapper.selectCount(
-                    new QueryWrapper<QuestionType>()
-                            .eq("subject_id", id)
-                            .notIn("name", DEFAULT_QUESTION_TYPES));
-            if (customQuestionTypeCount > 0) {
-                throw new BizException(ErrorCode.CONFLICT, "该科目下存在自定义题型，不能删除");
-            }
-            questionTypeMapper.delete(new QueryWrapper<QuestionType>().eq("subject_id", id));
+        List<Long> questionIds = questionMapper.selectList(
+                        new QueryWrapper<Question>().select("id").eq("subject_id", id))
+                .stream()
+                .map(Question::getId)
+                .toList();
+
+        if (!questionIds.isEmpty()) {
+            questionTagMapper.delete(new QueryWrapper<QuestionTag>().in("question_id", questionIds));
+            questionMapper.deleteBatchIds(questionIds);
         }
 
+        questionTypeMapper.delete(new QueryWrapper<QuestionType>().eq("subject_id", id));
         return subjectMapper.deleteById(id) > 0;
     }
 

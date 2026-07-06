@@ -4,7 +4,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.util.List;
 
-@Schema(description = "生成试卷响应")
+@Schema(description = "预览试卷响应")
 public class PaperGenerateResponse {
 
     private String paperId;
