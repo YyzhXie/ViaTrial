@@ -4,6 +4,7 @@
     :title="dialogTitle"
     width="720px"
     destroy-on-close
+    :close-on-press-escape="false"
     @close="handleClose"
   >
     <el-form
