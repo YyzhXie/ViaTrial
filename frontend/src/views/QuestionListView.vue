@@ -222,7 +222,12 @@
       </template>
     </el-dialog>
 
-    <el-dialog v-model="subjectManageVisible" title="删除科目" width="680px">
+    <el-dialog
+      v-model="subjectManageVisible"
+      title="删除科目"
+      width="680px"
+      :close-on-press-escape="false"
+    >
       <el-alert
         title="删除科目会同时删除该科目下的题目、题型和题目标签关联。"
         type="warning"
@@ -261,7 +266,12 @@
       </template>
     </el-dialog>
 
-    <el-dialog v-model="tagManageVisible" title="删除标签" width="680px">
+    <el-dialog
+      v-model="tagManageVisible"
+      title="删除标签"
+      width="680px"
+      :close-on-press-escape="false"
+    >
       <el-alert
         title="删除标签会先解除题目上的标签关联，不会删除题目本身。"
         type="warning"
