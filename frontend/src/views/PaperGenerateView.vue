@@ -147,7 +147,7 @@
                     :disabled="submitted"
                     @change="toggleOption(option.label)"
                   />
-                  <span>{{ option.label }}. {{ option.text }}</span>
+                  <span>{{ option.label }}. <LatexRenderer :content="option.text" /></span>
                 </label>
               </div>
               <div v-else class="text-answer-row">

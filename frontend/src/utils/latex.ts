@@ -87,6 +87,31 @@ export const wrapLatex = (source: string, mode: LatexWrapMode): string => {
   return bare
 }
 
+// 将 KaTeX 抛出的英文解析错误翻译为中文提示，供公式编辑器预览区展示。
+export const translateKatexError = (message: string): string => {
+  if (/Expected.*EOF|got '\\end'|at position/i.test(message)) {
+    return '公式语法错误：存在意外的符号或缺少结束符，请检查公式结构'
+  }
+
+  if (/Unsupported control sequence|Undefined control sequence|Unknown symbol|Unknown operator/i.test(message)) {
+    return '公式语法错误：包含不支持的命令或符号'
+  }
+
+  if (/Too many \}/i.test(message)) {
+    return '公式语法错误：存在多余的右花括号「}」'
+  }
+
+  if (/Unexpected end of input|Expected .* got end of input|end of input/i.test(message)) {
+    return '公式语法错误：公式不完整，缺少闭合符号或内容'
+  }
+
+  if (/Expected/i.test(message)) {
+    return '公式语法错误：符号或括号不匹配，请检查结构'
+  }
+
+  return '公式语法错误，请检查输入是否正确'
+}
+
 // 在文本的 [start, end) 区间插入内容，返回新文本。
 export const insertInto = (text: string, start: number, end: number, insertion: string): string =>
   text.slice(0, start) + insertion + text.slice(end)

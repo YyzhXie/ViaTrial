@@ -2,7 +2,7 @@
   <el-dialog
     :model-value="modelValue"
     title="插入公式"
-    width="980px"
+    width="1000px"
     append-to-body
     destroy-on-close
     :close-on-press-escape="false"
@@ -17,43 +17,21 @@
           :name="category.name"
         >
           <div class="template-grid">
-            <button
+            <LatexTemplateButton
               v-for="template in category.templates"
               :key="`${category.name}-${template.name}`"
-              type="button"
-              class="template-chip"
-              :title="template.latex"
-              @click="insertTemplate(template.latex)"
-            >
-              {{ template.name }}
-            </button>
+              :name="template.name"
+              :latex="template.latex"
+              @select="insertTemplate(template.latex)"
+            />
           </div>
         </el-tab-pane>
       </el-tabs>
 
-      <div class="editor-body">
-        <section class="editor-pane">
-          <div class="pane-title">源码编辑</div>
-          <el-input
-            ref="sourceInputRef"
-            v-model="source"
-            type="textarea"
-            :rows="9"
-            placeholder="在此输入 LaTeX 源码，或点击上方模板插入"
-            class="source-input"
-          />
-        </section>
-
-        <section class="editor-pane">
-          <div class="pane-title">实时预览</div>
-          <div class="preview-box">
-            <el-empty v-if="!previewLatexText" description="暂无预览" :image-size="60" />
-            <div v-else>
-              <div ref="previewRef" class="preview-content" />
-              <div v-if="previewError" class="preview-error">{{ previewError }}</div>
-            </div>
-          </div>
-        </section>
+      <div class="visual-editor">
+        <div class="pane-title">可视化编辑</div>
+        <div ref="mathfieldHost" class="mathfield-host" />
+        <div class="editor-hint">点击公式区域即可用键盘直接输入数字与符号，也可输入 LaTeX 命令（如 \frac{1}{2}）。</div>
       </div>
 
       <div class="editor-output">
@@ -87,18 +65,13 @@
 
 <script setup lang="ts">
 import { ElMessage } from 'element-plus'
-import katex from 'katex'
+import { MathfieldElement } from 'mathlive'
+import 'mathlive/fonts.css'
 import { computed, nextTick, ref, watch } from 'vue'
 
+import LatexTemplateButton from '@/components/LatexTemplateButton.vue'
 import { latexTemplateCategories } from '@/data/latexTemplates'
-import {
-  expandTemplate,
-  resolveInputTextarea,
-  stripPlaceholders,
-  unwrapLatex,
-  wrapLatex,
-  type LatexWrapMode,
-} from '@/utils/latex'
+import { wrapLatex, type LatexWrapMode } from '@/utils/latex'
 
 const props = defineProps<{
   modelValue: boolean
@@ -112,57 +85,57 @@ const emit = defineEmits<{
 const source = ref('')
 const wrapMode = ref<LatexWrapMode>('inline')
 const activeCategory = ref(latexTemplateCategories[0]?.name ?? '')
-const sourceInputRef = ref<any>()
-const previewRef = ref<HTMLElement>()
-const previewError = ref('')
-
-const previewLatexText = computed(() => stripPlaceholders(unwrapLatex(source.value)))
+const mathfieldHost = ref<HTMLElement>()
+let mathfield: MathfieldElement | null = null
 
 const outputSource = computed(() => wrapLatex(source.value, wrapMode.value))
 
-const renderPreview = () => {
-  const latex = previewLatexText.value
-  const el = previewRef.value
-
-  if (!latex) {
-    previewError.value = ''
-    el?.replaceChildren()
-    return
-  }
-
-  if (!el) {
-    return
-  }
-
-  el.replaceChildren()
-
-  try {
-    katex.render(latex, el, {
-      displayMode: wrapMode.value === 'display',
-      throwOnError: true,
-    })
-    previewError.value = ''
-  } catch (error) {
-    previewError.value = error instanceof Error ? error.message : '公式存在语法错误'
+const handleMathfieldInput = () => {
+  if (mathfield) {
+    source.value = mathfield.value
   }
 }
 
-const insertTemplate = (template: string) => {
-  const latex = expandTemplate(template)
-  const textarea = resolveInputTextarea(sourceInputRef.value)
-  const start = textarea?.selectionStart ?? source.value.length
-  const end = textarea?.selectionEnd ?? start
+const destroyMathfield = () => {
+  if (mathfield) {
+    mathfield.removeEventListener('input', handleMathfieldInput)
+    mathfield.remove()
+    mathfield = null
+  }
+}
 
-  source.value = source.value.slice(0, start) + latex + source.value.slice(end)
+const initMathfield = () => {
+  destroyMathfield()
 
-  nextTick(() => {
-    const el = resolveInputTextarea(sourceInputRef.value)
-    if (el) {
-      const pos = start + latex.length
-      el.setSelectionRange(pos, pos)
-      el.focus()
-    }
-  })
+  const host = mathfieldHost.value
+  if (!host) {
+    return
+  }
+
+  const field = new MathfieldElement()
+  field.value = source.value
+  field.addEventListener('input', handleMathfieldInput)
+
+  host.appendChild(field)
+  mathfield = field
+  field.focus()
+}
+
+const hideVirtualKeyboard = () => {
+  if (window.mathVirtualKeyboard) {
+    window.mathVirtualKeyboard.hide()
+  }
+}
+
+const insertTemplate = (latex: string) => {
+  if (mathfield) {
+    mathfield.insert(latex)
+    mathfield.focus()
+    source.value = mathfield.value
+    return
+  }
+
+  source.value += latex
 }
 
 const copySource = async () => {
@@ -201,17 +174,18 @@ watch(
     if (visible) {
       source.value = ''
       wrapMode.value = 'inline'
-      previewError.value = ''
       activeCategory.value = latexTemplateCategories[0]?.name ?? ''
-      await nextTick()
-      renderPreview()
+      // 等待弹窗内容渲染完成后再初始化可视化编辑区（MathLive math-field）
+      for (let i = 0; i < 10 && !mathfieldHost.value; i++) {
+        await nextTick()
+      }
+      initMathfield()
+    } else {
+      hideVirtualKeyboard()
+      destroyMathfield()
     }
   },
 )
-
-watch([source, wrapMode], () => {
-  nextTick(renderPreview)
-})
 </script>
 
 <style scoped>
@@ -224,34 +198,14 @@ watch([source, wrapMode], () => {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  padding: 2px 0 4px;
+  max-height: 236px;
+  overflow-y: auto;
+  padding: 2px 2px 6px;
 }
 
-.template-chip {
-  padding: 6px 12px;
-  border: 1px solid #e5e7eb;
-  border-radius: 6px;
-  background: #fff;
-  color: #374151;
-  cursor: pointer;
-  font-size: 13px;
-  transition: border-color 0.15s, color 0.15s, background 0.15s;
-}
-
-.template-chip:hover {
-  border-color: #409eff;
-  color: #409eff;
-  background: #f5f9ff;
-}
-
-.editor-body {
+.visual-editor {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 14px;
-}
-
-.editor-pane {
-  min-width: 0;
+  gap: 6px;
 }
 
 .pane-title {
@@ -261,29 +215,30 @@ watch([source, wrapMode], () => {
   color: #374151;
 }
 
-.preview-box {
-  min-height: 220px;
-  padding: 12px;
-  border: 1px solid #e5e7eb;
-  border-radius: 6px;
-  background: #fbfbfc;
-  overflow: auto;
-}
-
-.preview-content {
+.mathfield-host {
   display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 180px;
-  padding: 8px;
-  overflow-x: auto;
 }
 
-.preview-error {
-  margin-top: 8px;
-  color: #c45656;
-  font-size: 13px;
-  word-break: break-word;
+.mathfield-host :deep(math-field) {
+  width: 100%;
+  min-height: 120px;
+  padding: 14px 18px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #ffffff;
+  box-sizing: border-box;
+  font-size: 24px;
+  line-height: 1.4;
+}
+
+.mathfield-host :deep(math-field:focus-within) {
+  border-color: #409eff;
+  box-shadow: 0 0 0 2px rgba(64, 158, 255, 0.12);
+}
+
+.editor-hint {
+  font-size: 12px;
+  color: #9ca3af;
 }
 
 .editor-output {
