@@ -6,24 +6,18 @@
 import katex from 'katex'
 import { onMounted, ref, watch } from 'vue'
 
+import {
+  latexTokenPattern,
+  looksLikeBareLatex,
+  parseDelimitedLatex,
+  type LatexToken,
+} from '@/utils/latex'
+
 const props = defineProps<{
   content?: string | null
 }>()
 
 const containerRef = ref<HTMLElement>()
-
-type LatexToken = {
-  content: string
-  displayMode: boolean
-}
-
-const latexCommandPattern =
-  /\\(?:frac|dfrac|tfrac|sqrt|int|sum|prod|lim|log|ln|sin|cos|tan|cot|sec|csc|left|right|cdot|times|div|pm|mp|leq|geq|neq|approx|infty|alpha|beta|gamma|delta|theta|lambda|mu|pi|sigma|phi|omega|begin|end)\b/
-
-const latexScriptPattern = /(?:\^|_)(?:\{[^}]+\}|[A-Za-z0-9])/
-
-const looksLikeBareLatex = (text: string) =>
-  latexCommandPattern.test(text) || latexScriptPattern.test(text)
 
 const appendText = (text: string) => {
   containerRef.value?.appendChild(document.createTextNode(text))
@@ -44,34 +38,6 @@ const appendLatex = (token: LatexToken, fallback: string) => {
     containerRef.value.appendChild(node)
   } catch {
     appendText(fallback)
-  }
-}
-
-const parseDelimitedLatex = (token: string): LatexToken => {
-  if (token.startsWith('$$')) {
-    return {
-      content: token.slice(2, -2),
-      displayMode: true,
-    }
-  }
-
-  if (token.startsWith('\\[')) {
-    return {
-      content: token.slice(2, -2),
-      displayMode: true,
-    }
-  }
-
-  if (token.startsWith('\\(')) {
-    return {
-      content: token.slice(2, -2),
-      displayMode: false,
-    }
-  }
-
-  return {
-    content: token.slice(1, -1),
-    displayMode: false,
   }
 }
 
@@ -112,10 +78,9 @@ const renderLatex = () => {
     return
   }
 
-  const tokenPattern = /(\$\$[\s\S]+?\$\$|\$[^$\n]+?\$|\\\[[\s\S]+?\\\]|\\\([\s\S]+?\\\))/g
   let cursor = 0
 
-  for (const match of content.matchAll(tokenPattern)) {
+  for (const match of content.matchAll(latexTokenPattern)) {
     const token = match[0]
     const index = match.index ?? 0
 
