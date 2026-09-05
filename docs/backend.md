@@ -62,7 +62,7 @@ mvn package
 生成 jar：
 
 ```text
-backend/target/viatrial-backend-0.3.0.jar
+backend/target/viatrial-backend-0.3.1.jar
 ```
 
 项目根目录启动：

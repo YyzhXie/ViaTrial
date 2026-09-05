@@ -150,16 +150,25 @@
                   <span>{{ option.label }}. {{ option.text }}</span>
                 </label>
               </div>
-              <el-input
-                v-else
-                v-model="textAnswers[currentIndex]"
-                type="textarea"
-                :rows="4"
-                :disabled="submitted"
-                placeholder="请输入答案"
-                class="text-answer"
-                @input="handleTextAnswer"
-              />
+              <div v-else class="text-answer-row">
+                <el-input
+                  ref="textAnswerInputRef"
+                  v-model="textAnswers[currentIndex]"
+                  type="textarea"
+                  :rows="4"
+                  :disabled="submitted"
+                  placeholder="请输入答案"
+                  class="text-answer"
+                  @input="handleTextAnswer"
+                />
+                <el-button
+                  class="latex-insert-button"
+                  :disabled="submitted"
+                  @click="openFormulaEditor"
+                >
+                  插入公式
+                </el-button>
+              </div>
 
               <div v-if="submitted && !isCurrentCorrect" class="answer-tip">
                 <span>参考答案：</span>
@@ -217,18 +226,22 @@
         </template>
       </section>
     </section>
+
+    <LatexFormulaEditor v-model="formulaDialogVisible" @confirm="handleFormulaConfirm" />
   </main>
 </template>
 
 <script setup lang="ts">
 import { EditPen, Finished, RefreshLeft, View } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, nextTick, onMounted, reactive, ref } from 'vue'
 
 import { generatePaper } from '@/api/paper'
 import { listQuestionTypes } from '@/api/questionType'
 import { listSubjects } from '@/api/subject'
+import LatexFormulaEditor from '@/components/LatexFormulaEditor.vue'
 import LatexRenderer from '@/components/LatexRenderer.vue'
+import { insertInto, resolveInputTextarea } from '@/utils/latex'
 import type { PaperGenerateResponse, PaperQuestion } from '@/types/paper'
 import type { QuestionType } from '@/types/questionType'
 import type { Subject } from '@/types/subject'
@@ -257,6 +270,36 @@ const resultText = ref('')
 const typeCountMap = reactive<Record<number, number>>({})
 const answers = reactive<Record<number, string[]>>({})
 const textAnswers = reactive<Record<number, string>>({})
+const textAnswerInputRef = ref<any>()
+const formulaDialogVisible = ref(false)
+const formulaCursor = ref<{ start: number; end: number } | null>(null)
+
+const openFormulaEditor = () => {
+  const textarea = resolveInputTextarea(textAnswerInputRef.value)
+  const current = textAnswers[currentIndex.value] ?? ''
+  formulaCursor.value = textarea
+    ? { start: textarea.selectionStart, end: textarea.selectionEnd }
+    : { start: current.length, end: current.length }
+  formulaDialogVisible.value = true
+}
+
+const handleFormulaConfirm = (source: string) => {
+  const index = currentIndex.value
+  const current = textAnswers[index] ?? ''
+  const cursor = formulaCursor.value ?? { start: current.length, end: current.length }
+
+  textAnswers[index] = insertInto(current, cursor.start, cursor.end, source)
+  resultText.value = ''
+
+  nextTick(() => {
+    const el = resolveInputTextarea(textAnswerInputRef.value)
+    if (el) {
+      const pos = cursor.start + source.length
+      el.setSelectionRange(pos, pos)
+      el.focus()
+    }
+  })
+}
 
 const difficultyType = (difficulty: number) => {
   if (difficulty === 1) {

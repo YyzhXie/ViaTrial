@@ -52,20 +52,51 @@
       </el-form-item>
 
       <el-form-item label="题目" prop="content">
-        <el-input
-          v-model="form.content"
-          type="textarea"
-          :rows="4"
-          placeholder="输入题目正文，可包含 LaTeX"
-        />
+        <div class="latex-input-row">
+          <el-input
+            ref="contentInputRef"
+            v-model="form.content"
+            type="textarea"
+            :rows="4"
+            placeholder="输入题目正文，可包含 LaTeX"
+            class="latex-input"
+          />
+          <el-button class="latex-insert-button" @click="openFormulaEditor('content')">
+            插入公式
+          </el-button>
+        </div>
       </el-form-item>
 
       <el-form-item label="答案">
-        <el-input v-model="form.answer" type="textarea" :rows="3" placeholder="输入答案" />
+        <div class="latex-input-row">
+          <el-input
+            ref="answerInputRef"
+            v-model="form.answer"
+            type="textarea"
+            :rows="3"
+            placeholder="输入答案"
+            class="latex-input"
+          />
+          <el-button class="latex-insert-button" @click="openFormulaEditor('answer')">
+            插入公式
+          </el-button>
+        </div>
       </el-form-item>
 
       <el-form-item label="解析">
-        <el-input v-model="form.analysis" type="textarea" :rows="3" placeholder="输入解析" />
+        <div class="latex-input-row">
+          <el-input
+            ref="analysisInputRef"
+            v-model="form.analysis"
+            type="textarea"
+            :rows="3"
+            placeholder="输入解析"
+            class="latex-input"
+          />
+          <el-button class="latex-insert-button" @click="openFormulaEditor('analysis')">
+            插入公式
+          </el-button>
+        </div>
       </el-form-item>
 
       <el-form-item label="题目图片">
@@ -89,6 +120,8 @@
       </el-form-item>
     </el-form>
 
+    <LatexFormulaEditor v-model="formulaDialogVisible" @confirm="handleFormulaConfirm" />
+
     <template #footer>
       <el-button @click="handleClose">取消</el-button>
       <el-button type="primary" :loading="submitting" @click="handleSubmit">保存</el-button>
@@ -98,13 +131,15 @@
 
 <script setup lang="ts">
 import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
-import { computed, reactive, ref, watch } from 'vue'
+import { computed, nextTick, reactive, ref, watch } from 'vue'
 
 import { addQuestion, updateQuestion } from '@/api/question'
 import { addQuestionType, listQuestionTypes } from '@/api/questionType'
 import { addSubject, listSubjects } from '@/api/subject'
 import { addTag, listTags } from '@/api/tag'
+import LatexFormulaEditor from '@/components/LatexFormulaEditor.vue'
 import TagSelector from '@/components/TagSelector.vue'
+import { insertInto, resolveInputTextarea } from '@/utils/latex'
 import type { Question, QuestionAddRequest } from '@/types/question'
 import type { QuestionType } from '@/types/questionType'
 import type { Subject } from '@/types/subject'
@@ -145,6 +180,52 @@ const questionTypes = ref<QuestionType[]>([])
 const typeLoading = ref(false)
 const submitting = ref(false)
 const dialogTitle = computed(() => (props.question ? '编辑题目' : '新增题目'))
+
+type FormulaTarget = 'content' | 'answer' | 'analysis'
+
+const contentInputRef = ref<any>()
+const answerInputRef = ref<any>()
+const analysisInputRef = ref<any>()
+const formulaDialogVisible = ref(false)
+const formulaTarget = ref<FormulaTarget | null>(null)
+
+const getInputRef = (target: FormulaTarget) => {
+  if (target === 'content') {
+    return contentInputRef
+  }
+  if (target === 'answer') {
+    return answerInputRef
+  }
+  return analysisInputRef
+}
+
+const openFormulaEditor = (target: FormulaTarget) => {
+  formulaTarget.value = target
+  formulaDialogVisible.value = true
+}
+
+const handleFormulaConfirm = (source: string) => {
+  const target = formulaTarget.value
+  if (!target) {
+    return
+  }
+
+  const textarea = resolveInputTextarea(getInputRef(target).value)
+  const current = form[target] ?? ''
+  const start = textarea?.selectionStart ?? current.length
+  const end = textarea?.selectionEnd ?? start
+
+  form[target] = insertInto(current, start, end, source)
+
+  nextTick(() => {
+    const el = resolveInputTextarea(getInputRef(target).value)
+    if (el) {
+      const pos = start + source.length
+      el.setSelectionRange(pos, pos)
+      el.focus()
+    }
+  })
+}
 
 const selectedTagIds = computed<Array<number | string>>({
   get: () => form.tagIds || [],
@@ -332,5 +413,21 @@ watch(
 <style scoped>
 .question-form :deep(.el-select) {
   width: 100%;
+}
+
+.latex-input-row {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  width: 100%;
+}
+
+.latex-input-row .latex-input {
+  flex: 1;
+}
+
+.latex-input-row .latex-insert-button {
+  flex-shrink: 0;
+  margin-top: 2px;
 }
 </style>
