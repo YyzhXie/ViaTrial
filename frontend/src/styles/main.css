@@ -1,3 +1,8 @@
+:root {
+  /* MathLive 虚拟键盘的 z-index（默认 105，会被弹窗遮挡） */
+  --keyboard-zindex: 99999;
+}
+
 * {
   box-sizing: border-box;
 }

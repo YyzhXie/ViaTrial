@@ -40,3 +40,6 @@ frontend/.vite/
 .DS_Store
 .idea/
 *.db
+
+### 本地 AI 记忆 ###
+AGENTS.md
