@@ -51,5 +51,12 @@ target/
 *.db-journal
 .write-token
 
+### 审计工作产物 ###
+# 审计/审核过程产生的清单、报告与规划稿属于临时工作产物，不进入版本库。
+# 完整规则见 AGENTS.md「审计工作产物」一节：审核完成后即清空删除。
+/audit/
+/docs/audit/
+/docs/ViaTrial-LaTeX公式编辑器-可行性论证与融入规划.md
+
 ### 本地 AI 记忆 ###
 AGENTS.md
