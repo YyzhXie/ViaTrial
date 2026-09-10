@@ -2,19 +2,21 @@ package com.viatrial.controller;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.viatrial.database.DatabaseInitializer;
+import com.viatrial.TestDataDirectoryInitializer;
 import com.viatrial.entity.Question;
 import com.viatrial.entity.QuestionType;
 import com.viatrial.entity.Subject;
+import com.viatrial.config.DataDirectoryResolver;
 import com.viatrial.mapper.QuestionMapper;
 import com.viatrial.mapper.QuestionTypeMapper;
 import com.viatrial.mapper.SubjectMapper;
-import org.junit.jupiter.api.BeforeAll;
+import com.viatrial.security.WriteAccessInterceptor;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.UUID;
@@ -25,7 +27,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@SpringBootTest
+@SpringBootTest(classes = com.viatrial.Main.class)
+@ContextConfiguration(initializers = TestDataDirectoryInitializer.class)
 @AutoConfigureMockMvc
 class QuestionTypeControllerTest {
 
@@ -44,9 +47,11 @@ class QuestionTypeControllerTest {
     @Autowired
     private QuestionMapper questionMapper;
 
-    @BeforeAll
-    static void initDatabase() {
-        DatabaseInitializer.initialize();
+    @Autowired
+    private DataDirectoryResolver dataDirectoryResolver;
+
+    private String writeToken() {
+        return dataDirectoryResolver.getWriteToken();
     }
 
     @Test
@@ -57,6 +62,7 @@ class QuestionTypeControllerTest {
 
         try {
             String response = mockMvc.perform(post("/api/v1/question-types")
+                            .header(WriteAccessInterceptor.TOKEN_HEADER, writeToken())
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("{\"subjectId\":" + subject.getId() + ",\"name\":\"" + typeName + "\"}"))
                     .andExpect(status().isOk())
@@ -77,7 +83,8 @@ class QuestionTypeControllerTest {
                             + " && @.subjectId == " + subject.getId()
                             + " && @.name == '" + typeName + "')]").exists());
 
-            mockMvc.perform(delete("/api/v1/question-types/{id}", questionTypeId))
+            mockMvc.perform(delete("/api/v1/question-types/{id}", questionTypeId)
+                            .header(WriteAccessInterceptor.TOKEN_HEADER, writeToken()))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.code").value(200))
                     .andExpect(jsonPath("$.data").value(true));
@@ -94,6 +101,7 @@ class QuestionTypeControllerTest {
     @Test
     void shouldReturnNotFoundWhenSubjectDoesNotExist() throws Exception {
         mockMvc.perform(post("/api/v1/question-types")
+                        .header(WriteAccessInterceptor.TOKEN_HEADER, writeToken())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"subjectId\":999999999,\"name\":\"选择题\"}"))
                 .andExpect(status().isNotFound())
@@ -107,6 +115,7 @@ class QuestionTypeControllerTest {
 
         try {
             mockMvc.perform(post("/api/v1/question-types")
+                            .header(WriteAccessInterceptor.TOKEN_HEADER, writeToken())
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("{\"subjectId\":" + subject.getId()
                                     + ",\"name\":\"" + questionType.getName() + "\"}"))
@@ -131,7 +140,8 @@ class QuestionTypeControllerTest {
             question.setDifficulty(1);
             questionMapper.insert(question);
 
-            mockMvc.perform(delete("/api/v1/question-types/{id}", questionType.getId()))
+            mockMvc.perform(delete("/api/v1/question-types/{id}", questionType.getId())
+                            .header(WriteAccessInterceptor.TOKEN_HEADER, writeToken()))
                     .andExpect(status().isConflict())
                     .andExpect(jsonPath("$.code").value(409));
         } finally {

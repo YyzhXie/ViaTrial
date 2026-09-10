@@ -4,6 +4,7 @@ public enum ErrorCode {
 
     SUCCESS(200, "success"),
     PARAM_ERROR(400, "参数错误"),
+    UNAUTHORIZED(401, "未授权访问"),
     NOT_FOUND(404, "数据不存在"),
     CONFLICT(409, "数据冲突"),
     SYSTEM_ERROR(500, "系统内部错误");

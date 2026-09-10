@@ -12,6 +12,19 @@ import java.util.List;
 @Schema(description = "新增题目请求")
 public class QuestionAddRequest {
 
+    /**
+     * 题目正文/答案/解析长度上限（审计项 C-2）。此前这些字段完全没有长度约束，
+     * 可以写入任意大的 TEXT，批量读取时撑爆内存；这里与库中 TEXT 的实际用途对齐。
+     */
+    public static final int MAX_CONTENT_LENGTH = 20000;
+
+    public static final int MAX_ANSWER_LENGTH = 20000;
+
+    public static final int MAX_ANALYSIS_LENGTH = 20000;
+
+    /** 单题标签数量上限（审计项 C-3），避免超长 IN 子句。 */
+    public static final int MAX_TAG_COUNT = 50;
+
     @NotNull(message = "科目ID不能为空")
     @Schema(description = "科目ID", example = "1")
     private Long subjectId;
@@ -21,12 +34,15 @@ public class QuestionAddRequest {
     private Long typeId;
 
     @NotBlank(message = "题目正文不能为空")
+    @Size(max = MAX_CONTENT_LENGTH, message = "题目正文不能超过" + MAX_CONTENT_LENGTH + "个字符")
     @Schema(description = "题目正文")
     private String content;
 
+    @Size(max = MAX_ANSWER_LENGTH, message = "参考答案不能超过" + MAX_ANSWER_LENGTH + "个字符")
     @Schema(description = "参考答案")
     private String answer;
 
+    @Size(max = MAX_ANALYSIS_LENGTH, message = "解析不能超过" + MAX_ANALYSIS_LENGTH + "个字符")
     @Schema(description = "解析")
     private String analysis;
 
@@ -43,6 +59,7 @@ public class QuestionAddRequest {
     @Schema(description = "难度：1简单，2中等，3困难", example = "1")
     private Integer difficulty;
 
+    @Size(max = MAX_TAG_COUNT, message = "单题标签不能超过" + MAX_TAG_COUNT + "个")
     @Schema(description = "标签ID列表")
     private List<Long> tagIds;
 

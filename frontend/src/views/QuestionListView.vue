@@ -127,17 +127,17 @@
         <template #default="{ row }">
           <div class="image-list">
             <el-image
-              v-if="row.imageUrl"
-              :src="row.imageUrl"
-              :preview-src-list="[row.imageUrl]"
+              v-if="safeImageUrl(row.imageUrl)"
+              :src="safeImageUrl(row.imageUrl)"
+              :preview-src-list="[safeImageUrl(row.imageUrl)]"
               fit="cover"
               class="question-image"
               preview-teleported
             />
             <el-image
-              v-if="row.answerImageUrl"
-              :src="row.answerImageUrl"
-              :preview-src-list="[row.answerImageUrl]"
+              v-if="safeImageUrl(row.answerImageUrl)"
+              :src="safeImageUrl(row.answerImageUrl)"
+              :preview-src-list="[safeImageUrl(row.answerImageUrl)]"
               fit="cover"
               class="question-image"
               preview-teleported
@@ -323,6 +323,7 @@ import { addSubject, deleteSubject, listSubjects } from '@/api/subject'
 import { addTag, deleteTag, listTags } from '@/api/tag'
 import LatexRenderer from '@/components/LatexRenderer.vue'
 import QuestionFormDialog from '@/components/QuestionFormDialog.vue'
+import { safeImageUrl } from '@/utils/imageUrl'
 import type { Question } from '@/types/question'
 import type { QuestionType } from '@/types/questionType'
 import type { Subject } from '@/types/subject'

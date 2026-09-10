@@ -1,25 +1,33 @@
 server:
   port: 8080
+  # 安全底线（审计项 A-1）：默认只监听回环地址，局域网设备无法直接访问未鉴权的读写接口。
+  # 确需局域网访问时改为 0.0.0.0，并务必保留/替换 viatrial.security.write-token。
+  address: 127.0.0.1
+
+viatrial:
+  # 数据目录（相对路径按进程工作目录解析）。显式配置绝对路径可避免不同 CWD 启动
+  # 造成“数据分裂”（审计项 D-2）。
+  data-dir: data
+  security:
+    # 状态变更请求（POST/PUT/PATCH/DELETE）的访问令牌开关。
+    write-token-enabled: true
+    # 留空表示由后端在数据目录生成 .write-token 并复用；也可用环境变量
+    # VIATRIAL__SECURITY__WRITE_TOKEN 覆盖。
+    write-token: ""
+    # 默认拒绝跨站来源的写请求；仅在本站页面确实部署在其它域时才放开。
+    allow-cross-site-writes: false
 
 spring:
   application:
     name: viatrial
-  datasource:
-    driver-class-name: org.sqlite.JDBC
-    url: jdbc:sqlite:./data/viatrial.db
-    hikari:
-      maximum-pool-size: 1
-      minimum-idle: 1
-      connection-timeout: 30000
-      idle-timeout: 600000
-      max-lifetime: 1800000
-      connection-init-sql: PRAGMA foreign_keys=ON
   sql:
     init:
+      # 建表与迁移统一由 com.viatrial.database.DatabaseInitializer 负责。
       mode: never
+  # 数据源由 com.viatrial.config.DataSourceConfig 用解析后的绝对路径构造，此处不再声明
+  # spring.datasource.*，避免 URL 占位符与配置解析时机错配（见该类注释）。
 
 mybatis-plus:
-  mapper-locations: classpath*:/mapper/**/*.xml
   type-aliases-package: com.viatrial.entity
   configuration:
     map-underscore-to-camel-case: true
@@ -30,10 +38,17 @@ mybatis-plus:
 
 logging:
   level:
-    com.viatrial.mapper: debug
+    root: info
+    com.viatrial: info
+    # 生产默认不打全量 SQL（审计项 A-5）；需要排查时用 --logging.level.com.viatrial.mapper=debug 临时开启。
+    com.viatrial.mapper: info
 
 springdoc:
+  # 接口文档会暴露完整 API 面（含删除端点），默认关闭（审计项 A-4）。
+  # 需要调试时用 --springdoc.api-docs.enabled=true --springdoc.swagger-ui.enabled=true 临时开启。
   api-docs:
+    enabled: false
     path: /v3/api-docs
   swagger-ui:
+    enabled: false
     path: /swagger-ui.html

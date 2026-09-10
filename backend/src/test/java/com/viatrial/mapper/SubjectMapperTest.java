@@ -1,28 +1,24 @@
 package com.viatrial.mapper;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
-import com.viatrial.database.DatabaseInitializer;
+import com.viatrial.TestDataDirectoryInitializer;
 import com.viatrial.entity.Subject;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.ContextConfiguration;
 
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
-@SpringBootTest
+@SpringBootTest(classes = com.viatrial.Main.class)
+@ContextConfiguration(initializers = TestDataDirectoryInitializer.class)
 class SubjectMapperTest {
 
     @Autowired
     private SubjectMapper subjectMapper;
-
-    @BeforeAll
-    static void initDatabase() {
-        DatabaseInitializer.initialize();
-    }
 
     @Test
     void shouldInsertSelectAndDeleteSubject() {

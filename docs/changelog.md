@@ -1,5 +1,37 @@
 # 变更记录
 
+## 未发布
+
+### 安全
+
+- 新增写接口访问控制：`POST`/`PUT`/`PATCH`/`DELETE` 需通过同源校验或携带 `X-ViaTrial-Token` 访问令牌，令牌由后端生成并保存在数据目录的 `.write-token`；新增 `GET /api/v1/system/session` 供前端获取令牌（仅对回环来源下发）。
+- 默认监听地址由 `0.0.0.0` 收敛为 `127.0.0.1`，绑定到非回环地址时启动日志输出明确警告。
+- 接口文档（springdoc/Swagger UI）默认关闭，避免向未授权访问者暴露完整 API 面（含删除端点）。
+- 补全输入上限：分页 `page ≤ 10000`、`size ≤ 100`，题目正文/答案/解析各 ≤ 20000 字符，`tagIds ≤ 50`，组卷题型数 ≤ 50 且单题型抽题 ≤ 200，阻断超大 `LIMIT/OFFSET`、超长 TEXT 与超长 `IN` 子句造成的资源放大。
+- 前端图片地址增加协议白名单，仅放行绝对 `http(s)://`；KaTeX 显式关闭 `trust` 并限制 `maxSize`/`maxExpand`。
+- `.gitignore` 补充 `/data/`、`/backend/data/`、`*.db-wal`、`*.db-shm`、`*.db-journal`、`.write-token`。
+
+### 数据可靠性
+
+- 修复数据源 URL 占位符未解析导致启动失败的问题：数据库 URL 改由 `DataSourceConfig` 用解析后的绝对路径构造，不再依赖 YAML 占位符解析时机。
+- 数据目录统一解析为绝对路径并支持 `viatrial.data-dir` 配置，消除同一代码在不同工作目录下产生两个数据库文件的问题。
+- schema 真相源去重：删除与 `schema.sql` 内容重复的 `sql/init.sql`，只保留一份基线。
+- 引入版本化迁移：新增 `schema_version` 表和 `db/migration/V*.sql` 增量脚本机制，既有库升级可执行结构变更；改用 Spring `ScriptUtils` 解析脚本，替代按 `;` 裸切分的脆弱实现。
+- 删除 `DatabaseManager` 原生 `DriverManager` 连接与重复的 `data` 目录创建逻辑，全部走连接池；外键开关集中到连接池 `connection-init-sql`，并加入不变量测试。
+- 测试数据源隔离：测试数据目录重定向到 `target/test-data`，`mvn test` 不再读写真实数据库。
+- 索引维护：删除与 `UNIQUE` 隐式索引重复的 `idx_question_type_subject_id`、`idx_question_tag_question_id`，补充组卷热路径所需的 `idx_question_subject_type`。
+
+### 可观测性
+
+- `GlobalExceptionHandler` 所有分支补充日志（客户端错误 `warn`、服务端错误 `error` 带异常栈），补齐 `HttpMessageNotReadableException`（400）、`DataIntegrityViolationException`（409）、`NoResourceFoundException`（404）映射。
+- `Main` 启动日志改为通过日志框架输出，并打印监听地址与数据目录。
+- mapper 层 SQL 调试日志默认关闭，需要时用 `--logging.level.com.viatrial.mapper=debug` 临时开启。
+
+### 测试与文档
+
+- 新增 `DataSecurityTest`（9 项）：覆盖写接口令牌校验、跨站写请求拦截、令牌下发、外键不变量、schema 单一真相源、接口文档默认关闭、测试数据源隔离。
+- 同步更新 `README.md` 与 `docs/backend.md`、`docs/database.md`、`docs/api.md`。
+
 ## v0.3.1
 
 ### 功能

@@ -39,7 +39,17 @@ frontend/.vite/
 ### Mac OS ###
 .DS_Store
 .idea/
+
+### 本地数据库（审计项 D-12）###
+# SQLite 数据文件及其 WAL/SHM/journal 伴生文件、访问令牌一律不入库。
+/data/
+/backend/data/
+target/
 *.db
+*.db-wal
+*.db-shm
+*.db-journal
+.write-token
 
 ### 本地 AI 记忆 ###
 AGENTS.md
