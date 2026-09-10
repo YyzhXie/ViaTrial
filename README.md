@@ -13,8 +13,33 @@ ViaTrial 是一个面向学生复习场景的本地题目管理系统，支持�
 - LaTeX 渲染：前端集成 KaTeX，用于展示数学公式。
 - 公式输入：题目录入（题目/答案/解析）与填空题作答处提供可视化公式编辑器，支持源码编辑、模板插入与实时预览。
 - 本地数据：使用 SQLite 数据库，首次启动自动创建数据库与表结构。
+- 本地安全：默认只监听本机地址，写操作叠加访问令牌校验，局域网设备无法直接修改题库。
 
 > 本版本不包含 OCR 图片识别、移动端、登录认证或云端部署能力。
+
+## 数据安全
+
+ViaTrial 没有登录体系（本地单机工具），因此采用两层控制保护题库数据：
+
+1. **只监听本机**：默认 `server.address: 127.0.0.1`，局域网内的设备无法连接。确需局域网访问时改为 `0.0.0.0`，启动日志会给出明确警告。
+2. **写操作令牌**：新增/修改/删除类请求需要访问令牌，令牌保存在数据目录的 `.write-token` 文件中，由后端首次启动自动生成（也可用 `viatrial.security.write-token` 或环境变量 `VIATRIAL__SECURITY__WRITE_TOKEN` 指定）。前端页面自动获取，无需手工配置；用 curl/脚本调用写接口时需带上请求头 `X-ViaTrial-Token`。
+
+```bash
+# 读取令牌
+cat data/.write-token
+
+# 带令牌调用写接口
+curl -X POST http://127.0.0.1:8080/api/v1/subjects \
+  -H "Content-Type: application/json" \
+  -H "X-ViaTrial-Token: <令牌>" \
+  -d '{"name":"高等数学"}'
+```
+
+接口文档默认关闭（会暴露完整 API 面，含删除端点）。需要时临时开启：
+
+```bash
+java -jar backend/target/viatrial-backend-0.3.1.jar --springdoc.api-docs.enabled=true --springdoc.swagger-ui.enabled=true
+```
 
 ## 技术栈
 
@@ -47,13 +72,14 @@ backend/src/main/resources/application.yml
 
 ```text
 服务端口: 8080
-数据库: jdbc:sqlite:./data/viatrial.db
+监听地址: 127.0.0.1（仅本机）
+数据目录: data            （可用 viatrial.data-dir 指定，支持绝对路径）
 API 前缀: /api/v1
-Swagger UI: /swagger-ui.html
-OpenAPI JSON: /v3/api-docs
+写接口令牌: <数据目录>/.write-token
+接口文档: 默认关闭
 ```
 
-数据库文件位于项目根目录的 `data/viatrial.db`。数据库文件不会提交到 Git，首次启动时会自动创建 `data` 目录和数据库表。
+数据库文件位于数据目录下（默认 `<项目根>/data/viatrial.db`）。数据库文件与访问令牌不会提交到 Git，首次启动时会自动创建目录、数据库表和令牌。
 
 ## 构建
 

@@ -3,17 +3,19 @@ package com.viatrial.controller;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.viatrial.database.DatabaseInitializer;
+import com.viatrial.TestDataDirectoryInitializer;
 import com.viatrial.entity.QuestionType;
 import com.viatrial.entity.Subject;
+import com.viatrial.config.DataDirectoryResolver;
 import com.viatrial.mapper.QuestionTypeMapper;
 import com.viatrial.mapper.SubjectMapper;
-import org.junit.jupiter.api.BeforeAll;
+import com.viatrial.security.WriteAccessInterceptor;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.UUID;
@@ -24,7 +26,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@SpringBootTest
+@SpringBootTest(classes = com.viatrial.Main.class)
+@ContextConfiguration(initializers = TestDataDirectoryInitializer.class)
 @AutoConfigureMockMvc
 class SubjectControllerTest {
 
@@ -40,9 +43,11 @@ class SubjectControllerTest {
     @Autowired
     private QuestionTypeMapper questionTypeMapper;
 
-    @BeforeAll
-    static void initDatabase() {
-        DatabaseInitializer.initialize();
+    @Autowired
+    private DataDirectoryResolver dataDirectoryResolver;
+
+    private String writeToken() {
+        return dataDirectoryResolver.getWriteToken();
     }
 
     @Test
@@ -52,6 +57,7 @@ class SubjectControllerTest {
 
         try {
             String response = mockMvc.perform(post("/api/v1/subjects")
+                            .header(WriteAccessInterceptor.TOKEN_HEADER, writeToken())
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("{\"name\":\"" + name + "\"}"))
                     .andExpect(status().isOk())
@@ -70,7 +76,8 @@ class SubjectControllerTest {
                     .andExpect(jsonPath("$.code").value(200))
                     .andExpect(jsonPath("$.data[?(@.id == " + subjectId + " && @.name == '" + name + "')]").exists());
 
-            mockMvc.perform(delete("/api/v1/subjects/{id}", subjectId))
+            mockMvc.perform(delete("/api/v1/subjects/{id}", subjectId)
+                            .header(WriteAccessInterceptor.TOKEN_HEADER, writeToken()))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.code").value(200))
                     .andExpect(jsonPath("$.data").value(true));
@@ -99,7 +106,8 @@ class SubjectControllerTest {
             questionType.setName(typeName);
             questionTypeMapper.insert(questionType);
 
-            mockMvc.perform(delete("/api/v1/subjects/{id}", subject.getId()))
+            mockMvc.perform(delete("/api/v1/subjects/{id}", subject.getId())
+                            .header(WriteAccessInterceptor.TOKEN_HEADER, writeToken()))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.code").value(200))
                     .andExpect(jsonPath("$.data").value(true));

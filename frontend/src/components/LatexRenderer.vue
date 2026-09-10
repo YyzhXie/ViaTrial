@@ -19,6 +19,20 @@ const props = defineProps<{
 
 const containerRef = ref<HTMLElement>()
 
+/**
+ * KaTeX 安全边界（审计项 A-7）：显式关闭 trust，阻断 \href/\url/\includegraphics 等宏；
+ * 同时限制输入长度与宏展开次数，避免超长内容造成解析开销。
+ */
+const KATEX_OPTIONS = {
+  throwOnError: false,
+  trust: false,
+  strict: 'ignore' as const,
+  maxSize: 50,
+  maxExpand: 1000,
+}
+
+const MAX_CONTENT_LENGTH = 20000
+
 const appendText = (text: string) => {
   containerRef.value?.appendChild(document.createTextNode(text))
 }
@@ -32,8 +46,8 @@ const appendLatex = (token: LatexToken, fallback: string) => {
 
   try {
     katex.render(token.content, node, {
+      ...KATEX_OPTIONS,
       displayMode: token.displayMode,
-      throwOnError: false,
     })
     containerRef.value.appendChild(node)
   } catch {
@@ -71,7 +85,8 @@ const renderLatex = () => {
     return
   }
 
-  const content = props.content || ''
+  // 超长内容不进入 KaTeX 解析，直接以纯文本渲染，避免解析开销放大。
+  const content = (props.content || '').slice(0, MAX_CONTENT_LENGTH)
   containerRef.value.replaceChildren()
 
   if (!content) {

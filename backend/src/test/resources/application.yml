@@ -1,0 +1,18 @@
+# 测试专用配置（审计项 D-4）。
+#
+# 数据目录通过 com.viatrial.TestDataDirectoryInitializer 在上下文刷新前覆盖为
+# target/test-data，该目录随 mvn clean 一起清除，真实库不再被测试读写。
+
+springdoc:
+  # 与 src/main/resources/application.yml 的生产默认值保持一致。
+  # 这里重复声明是因为测试配置覆盖了 classpath 上的同名文件，无法通过
+  # spring.config.import 反向导入自身（Spring 会判定为循环导入并跳过）。
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false
+
+logging:
+  level:
+    root: warn
+    com.viatrial: info

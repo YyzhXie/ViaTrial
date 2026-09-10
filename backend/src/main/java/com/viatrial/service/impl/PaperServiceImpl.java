@@ -27,6 +27,12 @@ public class PaperServiceImpl implements PaperService {
 
     private static final DateTimeFormatter PAPER_ID_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
 
+    /**
+     * 单次组卷允许的题型条目上限（审计项 C-2）。Map 会展开为多条 SQL，
+     * 没有上限时可用超长 typeCountMap 触发大量查询。
+     */
+    private static final int MAX_TYPE_COUNT_ENTRIES = 50;
+
     private final SubjectMapper subjectMapper;
 
     private final QuestionTypeMapper questionTypeMapper;
@@ -54,6 +60,11 @@ public class PaperServiceImpl implements PaperService {
         Subject subject = subjectMapper.selectById(request.getSubjectId());
         if (subject == null) {
             throw new BizException(ErrorCode.NOT_FOUND, "Subject does not exist");
+        }
+
+        if (request.getTypeCountMap().size() > MAX_TYPE_COUNT_ENTRIES) {
+            throw new BizException(ErrorCode.PARAM_ERROR,
+                    "Too many question types in one request, at most " + MAX_TYPE_COUNT_ENTRIES);
         }
 
         for (Map.Entry<Long, Integer> entry : request.getTypeCountMap().entrySet()) {

@@ -123,9 +123,9 @@
               <section class="practice-question">
                 <LatexRenderer :content="currentPracticeQuestion.stem" />
                 <el-image
-                  v-if="currentQuestion?.imageUrl"
-                  :src="currentQuestion.imageUrl"
-                  :preview-src-list="[currentQuestion.imageUrl]"
+                  v-if="safeImageUrl(currentQuestion?.imageUrl)"
+                  :src="safeImageUrl(currentQuestion?.imageUrl)"
+                  :preview-src-list="[safeImageUrl(currentQuestion?.imageUrl)]"
                   fit="cover"
                   class="preview-image"
                   preview-teleported
@@ -242,6 +242,7 @@ import { listSubjects } from '@/api/subject'
 import LatexFormulaEditor from '@/components/LatexFormulaEditor.vue'
 import LatexRenderer from '@/components/LatexRenderer.vue'
 import { insertInto, resolveInputTextarea } from '@/utils/latex'
+import { safeImageUrl } from '@/utils/imageUrl'
 import type { PaperGenerateResponse, PaperQuestion } from '@/types/paper'
 import type { QuestionType } from '@/types/questionType'
 import type { Subject } from '@/types/subject'
