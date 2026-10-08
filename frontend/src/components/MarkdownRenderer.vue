@@ -25,7 +25,7 @@ const rendered = computed(() => markdown.render((props.content || '').slice(0, 2
 .markdown-body h3 { font-size: 1.2em; }
 .markdown-body blockquote { margin: 0; padding: 0 1em; color: #59636e; border-left: .25em solid #d1d9e0; }
 .markdown-body pre { padding: 16px; overflow: auto; border-radius: 6px; background: #f6f8fa; }
-.markdown-body code { padding: .15em .35em; border-radius: 4px; background: #eff2f5; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; }
+.markdown-body code { padding: .15em .35em; border-radius: 4px; background: #eff2f5; font-family: var(--github-font-monospace); }
 .markdown-body pre code { padding: 0; background: transparent; }
 .markdown-body table { border-collapse: collapse; display: block; overflow: auto; }
 .markdown-body th, .markdown-body td { padding: 6px 12px; border: 1px solid #d1d9e0; }
