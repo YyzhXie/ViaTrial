@@ -1,0 +1,35 @@
+<template>
+  <div class="markdown-body" v-html="rendered" />
+</template>
+
+<script setup lang="ts">
+import MarkdownIt from 'markdown-it'
+import katexPlugin from 'markdown-it-katex'
+import { computed } from 'vue'
+
+const props = defineProps<{ content?: string | null }>()
+
+const markdown = new MarkdownIt({ html: false, linkify: true, breaks: true, typographer: false })
+markdown.use(katexPlugin, { throwOnError: false, errorColor: '#cf222e', trust: false })
+
+const rendered = computed(() => markdown.render((props.content || '').slice(0, 20000)))
+</script>
+
+<style>
+.markdown-body { color: #1f2328; line-height: 1.65; overflow-wrap: anywhere; }
+.markdown-body > :first-child { margin-top: 0; }
+.markdown-body > :last-child { margin-bottom: 0; }
+.markdown-body h1, .markdown-body h2 { padding-bottom: .3em; border-bottom: 1px solid #d1d9e0; }
+.markdown-body h1 { font-size: 1.7em; }
+.markdown-body h2 { font-size: 1.4em; }
+.markdown-body h3 { font-size: 1.2em; }
+.markdown-body blockquote { margin: 0; padding: 0 1em; color: #59636e; border-left: .25em solid #d1d9e0; }
+.markdown-body pre { padding: 16px; overflow: auto; border-radius: 6px; background: #f6f8fa; }
+.markdown-body code { padding: .15em .35em; border-radius: 4px; background: #eff2f5; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; }
+.markdown-body pre code { padding: 0; background: transparent; }
+.markdown-body table { border-collapse: collapse; display: block; overflow: auto; }
+.markdown-body th, .markdown-body td { padding: 6px 12px; border: 1px solid #d1d9e0; }
+.markdown-body img { max-width: 100%; }
+.markdown-body a { color: #0969da; }
+.markdown-body .katex-display { overflow-x: auto; overflow-y: hidden; }
+</style>

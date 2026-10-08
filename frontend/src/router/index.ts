@@ -13,6 +13,16 @@ const router = createRouter({
       name: 'paper',
       component: () => import('@/views/PaperGenerateView.vue'),
     },
+    {
+      path: '/questions/new',
+      name: 'question-create',
+      component: () => import('@/views/QuestionFormView.vue'),
+    },
+    {
+      path: '/questions/:id/edit',
+      name: 'question-edit',
+      component: () => import('@/views/QuestionFormView.vue'),
+    },
   ],
 })
 

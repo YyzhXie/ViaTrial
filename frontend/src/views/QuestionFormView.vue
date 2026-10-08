@@ -1,12 +1,9 @@
 <template>
-  <el-dialog
-    :model-value="modelValue"
-    :title="dialogTitle"
-    width="720px"
-    destroy-on-close
-    :close-on-press-escape="false"
-    @close="handleClose"
-  >
+  <main class="page-shell question-form-page">
+    <header class="question-form-header">
+      <div><h1>{{ dialogTitle }}</h1><p>使用 Markdown 编写题目内容，并可随时预览效果。</p></div>
+      <div class="question-form-actions"><el-button @click="handleClose">取消</el-button><el-button type="primary" :loading="submitting" @click="handleSubmit">保存题目</el-button></div>
+    </header>
     <el-form
       ref="formRef"
       :model="form"
@@ -52,51 +49,15 @@
       </el-form-item>
 
       <el-form-item label="题目" prop="content">
-        <div class="latex-input-row">
-          <el-input
-            ref="contentInputRef"
-            v-model="form.content"
-            type="textarea"
-            :rows="4"
-            placeholder="输入题目正文，可包含 LaTeX"
-            class="latex-input"
-          />
-          <el-button class="latex-insert-button" @click="openFormulaEditor('content')">
-            插入公式
-          </el-button>
-        </div>
+        <MarkdownEditor ref="contentInputRef" v-model="form.content" :rows="4" placeholder="输入题目正文，支持 Markdown 和 LaTeX" @formula="openFormulaEditor('content')" />
       </el-form-item>
 
       <el-form-item label="答案">
-        <div class="latex-input-row">
-          <el-input
-            ref="answerInputRef"
-            v-model="form.answer"
-            type="textarea"
-            :rows="3"
-            placeholder="输入答案"
-            class="latex-input"
-          />
-          <el-button class="latex-insert-button" @click="openFormulaEditor('answer')">
-            插入公式
-          </el-button>
-        </div>
+        <MarkdownEditor ref="answerInputRef" v-model="form.answer" :rows="3" placeholder="输入答案，支持 Markdown 和 LaTeX" @formula="openFormulaEditor('answer')" />
       </el-form-item>
 
       <el-form-item label="解析">
-        <div class="latex-input-row">
-          <el-input
-            ref="analysisInputRef"
-            v-model="form.analysis"
-            type="textarea"
-            :rows="3"
-            placeholder="输入解析"
-            class="latex-input"
-          />
-          <el-button class="latex-insert-button" @click="openFormulaEditor('analysis')">
-            插入公式
-          </el-button>
-        </div>
+        <MarkdownEditor ref="analysisInputRef" v-model="form.analysis" :rows="3" placeholder="输入解析，支持 Markdown 和 LaTeX" @formula="openFormulaEditor('analysis')" />
       </el-form-item>
 
       <el-form-item label="题目图片">
@@ -122,22 +83,20 @@
 
     <LatexFormulaEditor v-model="formulaDialogVisible" @confirm="handleFormulaConfirm" />
 
-    <template #footer>
-      <el-button @click="handleClose">取消</el-button>
-      <el-button type="primary" :loading="submitting" @click="handleSubmit">保存</el-button>
-    </template>
-  </el-dialog>
+  </main>
 </template>
 
 <script setup lang="ts">
 import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
-import { computed, nextTick, reactive, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, reactive, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 
-import { addQuestion, updateQuestion } from '@/api/question'
+import { addQuestion, getQuestion, updateQuestion } from '@/api/question'
 import { addQuestionType, listQuestionTypes } from '@/api/questionType'
 import { addSubject, listSubjects } from '@/api/subject'
 import { addTag, listTags } from '@/api/tag'
 import LatexFormulaEditor from '@/components/LatexFormulaEditor.vue'
+import MarkdownEditor from '@/components/MarkdownEditor.vue'
 import TagSelector from '@/components/TagSelector.vue'
 import { insertInto, resolveInputTextarea } from '@/utils/latex'
 import type { Question, QuestionAddRequest } from '@/types/question'
@@ -145,19 +104,15 @@ import type { QuestionType } from '@/types/questionType'
 import type { Subject } from '@/types/subject'
 import type { Tag } from '@/types/tag'
 
-const props = defineProps<{
-  modelValue: boolean
-  question?: Question | null
-}>()
+const route = useRoute()
+const router = useRouter()
+const editingQuestion = ref<Question | null>(null)
 
-const emit = defineEmits<{
-  'update:modelValue': [value: boolean]
-  success: []
-}>()
-
-type QuestionFormState = Omit<QuestionAddRequest, 'subjectId' | 'typeId' | 'tagIds'> & {
+type QuestionFormState = Omit<QuestionAddRequest, 'subjectId' | 'typeId' | 'tagIds' | 'answer' | 'analysis'> & {
   subjectId: number | string
   typeId: number | string
+  answer: string
+  analysis: string
   tagIds: Array<number | string>
 }
 
@@ -179,7 +134,7 @@ const subjects = ref<Subject[]>([])
 const questionTypes = ref<QuestionType[]>([])
 const typeLoading = ref(false)
 const submitting = ref(false)
-const dialogTitle = computed(() => (props.question ? '编辑题目' : '新增题目'))
+const dialogTitle = computed(() => (editingQuestion.value ? '编辑题目' : '新增题目'))
 
 type FormulaTarget = 'content' | 'answer' | 'analysis'
 
@@ -210,7 +165,7 @@ const handleFormulaConfirm = (source: string) => {
     return
   }
 
-  const textarea = resolveInputTextarea(getInputRef(target).value)
+  const textarea = resolveInputTextarea(getInputRef(target).value?.inputRef)
   const current = form[target] ?? ''
   const start = textarea?.selectionStart ?? current.length
   const end = textarea?.selectionEnd ?? start
@@ -218,7 +173,7 @@ const handleFormulaConfirm = (source: string) => {
   form[target] = insertInto(current, start, end, source)
 
   nextTick(() => {
-    const el = resolveInputTextarea(getInputRef(target).value)
+    const el = resolveInputTextarea(getInputRef(target).value?.inputRef)
     if (el) {
       const pos = start + source.length
       el.setSelectionRange(pos, pos)
@@ -358,7 +313,7 @@ const ensureTagIds = async () => {
 }
 
 const handleClose = () => {
-  emit('update:modelValue', false)
+  router.push('/')
 }
 
 const handleSubmit = async () => {
@@ -382,52 +337,44 @@ const handleSubmit = async () => {
       tagIds,
     }
 
-    if (props.question) {
-      await updateQuestion(props.question.id, payload)
+    if (editingQuestion.value) {
+      await updateQuestion(editingQuestion.value.id, payload)
       ElMessage.success('编辑题目成功')
     } else {
       await addQuestion(payload)
       ElMessage.success('新增题目成功')
     }
-    emit('update:modelValue', false)
-    emit('success')
+    await router.push('/')
   } finally {
     submitting.value = false
   }
 }
 
-watch(
-  () => props.modelValue,
-  async (visible) => {
-    if (visible) {
-      resetForm()
-      await loadSubjects()
-      if (props.question) {
-        await fillForm(props.question)
-      }
+onMounted(async () => {
+  resetForm()
+  await loadSubjects()
+  const id = Number(route.params.id)
+  if (Number.isInteger(id) && id > 0) {
+    try {
+      const question = await getQuestion(id)
+      editingQuestion.value = question
+      await fillForm(question)
+    } catch {
+      ElMessage.error('未找到该题目')
+      await router.replace('/')
     }
-  },
-)
+  }
+})
 </script>
 
 <style scoped>
+.question-form-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 20px; }
+.question-form-header h1 { margin: 0; color: #1f2328; font-size: 24px; }
+.question-form-header p { margin: 6px 0 0; color: #59636e; }
+.question-form-actions { display: flex; gap: 8px; }
+.question-form { padding: 24px; border: 1px solid #d1d9e0; border-radius: 8px; background: #fff; }
 .question-form :deep(.el-select) {
   width: 100%;
 }
 
-.latex-input-row {
-  display: flex;
-  gap: 8px;
-  align-items: flex-start;
-  width: 100%;
-}
-
-.latex-input-row .latex-input {
-  flex: 1;
-}
-
-.latex-input-row .latex-insert-button {
-  flex-shrink: 0;
-  margin-top: 2px;
-}
 </style>

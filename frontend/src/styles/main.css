@@ -1,6 +1,14 @@
 :root {
   /* MathLive 虚拟键盘的 z-index（默认 105，会被弹窗遮挡） */
   --keyboard-zindex: 99999;
+  --github-canvas: #f6f8fa;
+  --github-border: #d1d9e0;
+  --github-fg: #1f2328;
+  --github-muted: #59636e;
+  --el-color-primary: #0969da;
+  --el-color-success: #1a7f37;
+  --el-color-warning: #9a6700;
+  --el-color-danger: #cf222e;
 }
 
 * {
@@ -10,8 +18,8 @@
 body {
   margin: 0;
   min-width: 320px;
-  color: #1f2937;
-  background: #f7f8fa;
+  color: #1f2328;
+  background: #f6f8fa;
   font-family:
     Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
     sans-serif;
@@ -27,14 +35,14 @@ body {
   gap: 32px;
   height: 60px;
   padding: 0 24px;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid #d1d9e0;
   background: #ffffff;
 }
 
 .brand {
   font-size: 20px;
   font-weight: 700;
-  color: #111827;
+  color: #1f2328;
 }
 
 .app-menu {
@@ -52,7 +60,7 @@ body {
 .paper-panel,
 .paper-result,
 .paper-question {
-  border: 1px solid #e5e7eb;
+  border: 1px solid #d1d9e0;
   border-radius: 8px;
   background: #ffffff;
 }
@@ -193,7 +201,7 @@ body {
 
 .question-index {
   font-weight: 700;
-  color: #111827;
+  color: #1f2328;
 }
 
 .question-block {
@@ -225,10 +233,10 @@ body {
 
 .preview-option,
 .practice-option {
-  border: 1px solid #e6e0d7;
+  border: 1px solid #d1d9e0;
   border-radius: 999px;
   background: #fff;
-  color: #3d3a36;
+  color: #1f2328;
 }
 
 .preview-option {
@@ -236,9 +244,9 @@ body {
 }
 
 .practice-card {
-  border: 1px solid #ede8e0;
+  border: 1px solid #d1d9e0;
   border-radius: 8px;
-  background: #fcfaf7;
+  background: #ffffff;
   padding: 22px 24px;
 }
 
@@ -256,15 +264,15 @@ body {
 .q-number,
 .page-info {
   border-radius: 999px;
-  background: #eae5dd;
+  background: #f6f8fa;
   padding: 4px 16px;
-  color: #4f4a44;
+  color: #59636e;
   font-size: 14px;
   font-weight: 600;
 }
 
 .q-status {
-  color: #8a8580;
+  color: #59636e;
   font-size: 14px;
 }
 
@@ -295,33 +303,33 @@ body {
 }
 
 .practice-option:hover {
-  background: #f5f1eb;
+  background: #f6f8fa;
   border-color: #cdc4b8;
 }
 
 .practice-option.selected {
-  background: #f0ebe3;
-  border-color: #b8aa98;
-  box-shadow: 0 0 0 2px #d6cdc0;
+  background: #ddf4ff;
+  border-color: #0969da;
+  box-shadow: 0 0 0 2px #ddf4ff;
 }
 
 .practice-option.correct {
-  background: #e7f5e8;
-  border-color: #8fc99a;
-  box-shadow: 0 0 0 2px #c9e8cd;
+  background: #dafbe1;
+  border-color: #4ac26b;
+  box-shadow: 0 0 0 2px #aceebb;
 }
 
 .practice-option.wrong {
-  background: #fde8ef;
-  border-color: #e59aaa;
-  box-shadow: 0 0 0 2px #f7c8d5;
+  background: #fff1f0;
+  border-color: #ff8182;
+  box-shadow: 0 0 0 2px #ffcecb;
 }
 
 .practice-option input {
   width: 18px;
   height: 18px;
   margin: 0;
-  accent-color: #8f7e6b;
+  accent-color: #0969da;
   flex: 0 0 auto;
 }
 
@@ -350,9 +358,9 @@ body {
 }
 
 .answer-tip {
-  border: 1px solid #8fc99a;
-  background: #e7f5e8;
-  color: #356742;
+  border: 1px solid #4ac26b;
+  background: #dafbe1;
+  color: #1a7f37;
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
@@ -360,7 +368,7 @@ body {
 }
 
 .answer-analysis {
-  border: 1px solid #e6e0d7;
+  border: 1px solid #d1d9e0;
   background: #fff;
 }
 
@@ -378,12 +386,12 @@ body {
 }
 
 .answer-card {
-  border-top: 2px solid #e8e3da;
+  border-top: 2px solid #d1d9e0;
   padding-top: 16px;
 }
 
 .answer-card-title {
-  color: #6b6660;
+  color: #59636e;
   font-size: 14px;
   font-weight: 600;
 }
@@ -403,35 +411,60 @@ body {
   justify-content: center;
   border: 1px solid transparent;
   border-radius: 999px;
-  background: #f2eee8;
-  color: #4f4a44;
+  background: #f6f8fa;
+  color: #59636e;
   cursor: pointer;
   font-weight: 600;
 }
 
 .answer-card-num.active {
-  background: #d6cdc0;
-  border-color: #b8aa98;
-  color: #2d2823;
+  background: #ddf4ff;
+  border-color: #0969da;
+  color: #1f2328;
 }
 
 .answer-card-num.answered {
   background: #c8bcae;
-  border-color: #a69583;
-  color: #2d2823;
+  border-color: #0969da;
+  color: #1f2328;
 }
 
 .answer-card-num.correct {
-  background: #dff3e2;
-  border-color: #8fc99a;
-  color: #285c35;
+  background: #dafbe1;
+  border-color: #4ac26b;
+  color: #1a7f37;
 }
 
 .answer-card-num.wrong {
-  background: #fde3ec;
-  border-color: #e59aaa;
-  color: #8b3347;
+  background: #fff1f0;
+  border-color: #ff8182;
+  color: #cf222e;
 }
+
+.practice-content,
+.answer-content {
+  width: fit-content;
+  max-width: 100%;
+  min-width: min(100%, 280px);
+  padding: 18px 22px;
+  border: 1px solid #d1d9e0;
+  border-radius: 10px;
+  background: #ffffff;
+  color: #1f2328;
+}
+
+.practice-content { margin-top: 12px; }
+.answer-content { margin-top: 8px; }
+.answer-analysis h3 { margin-bottom: 8px; }
+
+/* GitHub light palette for shared Element Plus surfaces and controls. */
+.el-button--primary { --el-button-bg-color: #1f883d; --el-button-border-color: #1f883d; --el-button-hover-bg-color: #1a7f37; --el-button-hover-border-color: #1a7f37; }
+.el-button--primary:active { --el-button-active-bg-color: #116329; --el-button-active-border-color: #116329; }
+.el-input__wrapper, .el-select__wrapper, .el-textarea__inner { box-shadow: 0 0 0 1px #d1d9e0 inset; }
+.el-input__wrapper.is-focus, .el-select__wrapper.is-focused, .el-textarea__inner:focus { box-shadow: 0 0 0 2px #0969da inset; }
+.el-table { --el-table-border-color: #d1d9e0; --el-table-header-bg-color: #f6f8fa; --el-table-row-hover-bg-color: #f6f8fa; --el-table-text-color: #1f2328; --el-table-header-text-color: #59636e; }
+.el-menu--horizontal > .el-menu-item.is-active { color: #0969da; border-bottom-color: #fd8c73; }
+.el-tag { --el-tag-border-color: #d1d9e0; --el-tag-bg-color: #f6f8fa; --el-tag-text-color: #1f2328; }
 
 @media (max-width: 960px) {
   .paper-layout,

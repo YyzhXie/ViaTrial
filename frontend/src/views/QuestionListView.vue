@@ -82,7 +82,7 @@
               </el-dropdown-menu>
             </template>
           </el-dropdown>
-          <el-button type="success" :icon="Plus" @click="openCreateDialog">新增题目</el-button>
+          <el-button type="primary" :icon="Plus" @click="openCreateDialog">新增题目</el-button>
         </el-form-item>
       </el-form>
     </section>
@@ -98,17 +98,17 @@
       <el-table-column prop="typeName" label="题型" min-width="110" />
       <el-table-column label="题目内容" min-width="260">
         <template #default="{ row }">
-          <LatexRenderer :content="row.content" />
+          <MarkdownRenderer :content="row.content" />
         </template>
       </el-table-column>
       <el-table-column label="答案" min-width="220">
         <template #default="{ row }">
-          <LatexRenderer :content="row.answer" />
+          <MarkdownRenderer :content="row.answer" />
         </template>
       </el-table-column>
       <el-table-column label="解析" min-width="220">
         <template #default="{ row }">
-          <LatexRenderer :content="row.analysis" />
+          <MarkdownRenderer :content="row.analysis" />
         </template>
       </el-table-column>
       <el-table-column label="难度" width="80" align="center">
@@ -167,12 +167,6 @@
         @size-change="handleSizeChange"
       />
     </div>
-
-    <QuestionFormDialog
-      v-model="dialogVisible"
-      :question="editingQuestion"
-      @success="handleQuestionSaved"
-    />
 
     <el-dialog
       v-model="subjectDialogVisible"
@@ -316,13 +310,13 @@
 import { ArrowDown, Collection, Delete, Edit, Plus, PriceTag, RefreshLeft, Search } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { onMounted, reactive, ref } from 'vue'
+import { useRouter } from 'vue-router'
 
 import { deleteQuestion, pageQuestions } from '@/api/question'
 import { listQuestionTypes } from '@/api/questionType'
 import { addSubject, deleteSubject, listSubjects } from '@/api/subject'
 import { addTag, deleteTag, listTags } from '@/api/tag'
-import LatexRenderer from '@/components/LatexRenderer.vue'
-import QuestionFormDialog from '@/components/QuestionFormDialog.vue'
+import MarkdownRenderer from '@/components/MarkdownRenderer.vue'
 import { safeImageUrl } from '@/utils/imageUrl'
 import type { Question } from '@/types/question'
 import type { QuestionType } from '@/types/questionType'
@@ -331,8 +325,7 @@ import type { Tag } from '@/types/tag'
 
 const loading = ref(false)
 const typeLoading = ref(false)
-const dialogVisible = ref(false)
-const editingQuestion = ref<Question | null>(null)
+const router = useRouter()
 const subjectDialogVisible = ref(false)
 const tagDialogVisible = ref(false)
 const subjectManageVisible = ref(false)
@@ -439,13 +432,11 @@ const handleTagCommand = (command: string) => {
 }
 
 const openCreateDialog = () => {
-  editingQuestion.value = null
-  dialogVisible.value = true
+  router.push('/questions/new')
 }
 
 const openEditDialog = (question: Question) => {
-  editingQuestion.value = question
-  dialogVisible.value = true
+  router.push(`/questions/${question.id}/edit`)
 }
 
 const submitSubject = async () => {
@@ -520,11 +511,6 @@ const handleReset = () => {
 const handleSizeChange = () => {
   pagination.page = 1
   loadQuestions()
-}
-
-const handleQuestionSaved = async () => {
-  pagination.page = 1
-  await Promise.all([loadBaseData(), loadQuestions()])
 }
 
 const refreshAfterSubjectDelete = async () => {

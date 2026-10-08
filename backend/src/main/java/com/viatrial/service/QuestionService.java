@@ -13,5 +13,7 @@ public interface QuestionService {
 
     PageResult<QuestionResponse> pageQuestions(QuestionPageRequest request);
 
+    QuestionResponse getQuestion(Long id);
+
     Boolean deleteQuestion(Long id);
 }

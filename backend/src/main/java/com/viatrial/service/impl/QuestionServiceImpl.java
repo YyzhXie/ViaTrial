@@ -144,6 +144,15 @@ public class QuestionServiceImpl implements QuestionService {
     }
 
     @Override
+    public QuestionResponse getQuestion(Long id) {
+        Question question = questionMapper.selectById(id);
+        if (question == null) {
+            throw new BizException(ErrorCode.NOT_FOUND, "Question does not exist");
+        }
+        return toQuestionResponses(List.of(question)).get(0);
+    }
+
+    @Override
     @Transactional
     public Boolean deleteQuestion(Long id) {
         Question question = questionMapper.selectById(id);

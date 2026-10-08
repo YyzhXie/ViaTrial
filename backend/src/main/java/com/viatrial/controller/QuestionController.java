@@ -50,6 +50,12 @@ public class QuestionController {
         return Result.success(questionService.pageQuestions(request));
     }
 
+    @Operation(summary = "查询题目详情")
+    @GetMapping("/{id}")
+    public Result<QuestionResponse> getQuestion(@PathVariable Long id) {
+        return Result.success(questionService.getQuestion(id));
+    }
+
     @Operation(summary = "删除题目")
     @DeleteMapping("/{id}")
     public Result<Boolean> deleteQuestion(@PathVariable Long id) {

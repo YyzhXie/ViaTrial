@@ -105,7 +105,7 @@
 
                 <section class="question-block">
                   <h3>题目</h3>
-                  <LatexRenderer :content="getPracticeQuestion(question).stem" />
+                  <MarkdownRenderer :content="getPracticeQuestion(question).stem" />
                 </section>
               </article>
             </div>
@@ -121,7 +121,7 @@
               </header>
 
               <section class="practice-question">
-                <LatexRenderer :content="currentPracticeQuestion.stem" />
+                <div class="practice-content"><MarkdownRenderer :content="currentPracticeQuestion.stem" /></div>
                 <el-image
                   v-if="safeImageUrl(currentQuestion?.imageUrl)"
                   :src="safeImageUrl(currentQuestion?.imageUrl)"
@@ -147,7 +147,7 @@
                     :disabled="submitted"
                     @change="toggleOption(option.label)"
                   />
-                  <span>{{ option.label }}. <LatexRenderer :content="option.text" /></span>
+                  <span>{{ option.label }}. <MarkdownRenderer :content="option.text" /></span>
                 </label>
               </div>
               <div v-else class="text-answer-row">
@@ -171,12 +171,12 @@
               </div>
 
               <div v-if="submitted && !isCurrentCorrect" class="answer-tip">
-                <span>参考答案：</span>
-                <LatexRenderer :content="currentQuestion?.answer || '暂无参考答案'" />
+                <h3>参考答案</h3>
+                <div class="answer-content"><MarkdownRenderer :content="currentQuestion?.answer || '暂无参考答案'" /></div>
               </div>
               <div v-if="submitted && currentQuestion?.analysis" class="answer-analysis">
                 <h3>解析</h3>
-                <LatexRenderer :content="currentQuestion.analysis" />
+                <div class="answer-content"><MarkdownRenderer :content="currentQuestion.analysis" /></div>
               </div>
             </article>
 
@@ -240,7 +240,7 @@ import { generatePaper } from '@/api/paper'
 import { listQuestionTypes } from '@/api/questionType'
 import { listSubjects } from '@/api/subject'
 import LatexFormulaEditor from '@/components/LatexFormulaEditor.vue'
-import LatexRenderer from '@/components/LatexRenderer.vue'
+import MarkdownRenderer from '@/components/MarkdownRenderer.vue'
 import { insertInto, resolveInputTextarea } from '@/utils/latex'
 import { safeImageUrl } from '@/utils/imageUrl'
 import type { PaperGenerateResponse, PaperQuestion } from '@/types/paper'

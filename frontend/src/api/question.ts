@@ -19,6 +19,10 @@ export function updateQuestion(id: number, data: QuestionAddRequest): Promise<bo
   })
 }
 
+export function getQuestion(id: number): Promise<Question> {
+  return requestData<Question>({ url: `/questions/${id}`, method: 'GET' })
+}
+
 export function pageQuestions(params: QuestionPageRequest): Promise<PageResult<Question>> {
   return requestData<PageResult<Question>>({
     url: '/questions/page',
