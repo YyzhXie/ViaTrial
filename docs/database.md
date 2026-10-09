@@ -5,7 +5,7 @@ ViaTrial 使用 SQLite 作为本地数据库。数据文件位置由 `viatrial.d
 > **注意**：数据目录解析为绝对路径是为了消除“同一份代码在不同工作目录下启动会创建两个库”的历史问题。仓库根目录启动（`start.bat`）得到 `<repo>/data/viatrial.db`；从 `backend/` 启动（IDE、`mvn spring-boot:run`）得到 `<repo>/backend/data/viatrial.db`。如需固定位置，显式配置绝对路径：
 >
 > ```bash
-> java -jar viatrial-backend-0.3.1.jar --viatrial.data-dir=D:/ViaTrialData
+> java -jar viatrial-backend-0.3.2.jar --viatrial.data-dir=D:/ViaTrialData
 > ```
 >
 > 可用环境变量 `VIATRIAL__DATA_DIR` 覆盖。

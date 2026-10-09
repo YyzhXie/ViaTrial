@@ -4,13 +4,13 @@
       <el-header class="app-header">
         <div class="brand">ViaTrial</div>
         <el-menu
-          :default-active="route.path"
+          :default-active="route.path.startsWith('/paper') ? '/paper' : route.path"
           mode="horizontal"
           router
           class="app-menu"
         >
           <el-menu-item index="/">题目列表</el-menu-item>
-          <el-menu-item index="/paper">预览试卷</el-menu-item>
+          <el-menu-item index="/paper">组卷</el-menu-item>
         </el-menu>
       </el-header>
       <el-main>

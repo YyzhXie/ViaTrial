@@ -70,7 +70,7 @@ ViaTrial 是本地单机应用，没有登录体系。为避免局域网内任�
 需要调试接口文档时临时开启：
 
 ```bash
-java -jar viatrial-backend-0.3.1.jar --springdoc.api-docs.enabled=true --springdoc.swagger-ui.enabled=true
+java -jar viatrial-backend-0.3.2.jar --springdoc.api-docs.enabled=true --springdoc.swagger-ui.enabled=true
 ```
 
 ## 构建与启动
@@ -85,7 +85,7 @@ mvn package
 生成 jar：
 
 ```text
-backend/target/viatrial-backend-0.3.1.jar
+backend/target/viatrial-backend-0.3.2.jar
 ```
 
 项目根目录启动：

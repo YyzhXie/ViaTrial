@@ -34,6 +34,9 @@ public class QuestionPageRequest {
     @Schema(description = "标签ID")
     private Long tagId;
 
+    @Schema(description = "题目关键词")
+    private String keyword;
+
     public Long getPage() {
         return page == null ? 1L : page;
     }
@@ -73,4 +76,8 @@ public class QuestionPageRequest {
     public void setTagId(Long tagId) {
         this.tagId = tagId;
     }
+
+    public String getKeyword() { return keyword; }
+
+    public void setKeyword(String keyword) { this.keyword = keyword; }
 }

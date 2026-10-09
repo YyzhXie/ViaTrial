@@ -2,6 +2,9 @@
   <main class="page-shell">
     <section class="toolbar">
       <el-form :model="filters" inline label-width="72px" class="filter-form">
+        <el-form-item label="搜索题目">
+          <el-input v-model="filters.keyword" clearable placeholder="输入题目关键词" class="filter-control" @keyup.enter="handleSearch" />
+        </el-form-item>
         <el-form-item label="科目">
           <el-select
             v-model="filters.subjectId"
@@ -98,12 +101,12 @@
       <el-table-column prop="typeName" label="题型" min-width="110" />
       <el-table-column label="题目内容" min-width="260">
         <template #default="{ row }">
-          <MarkdownRenderer :content="row.content" />
+          <MarkdownRenderer :content="decodeQuestionContent(row.content).stem" />
         </template>
       </el-table-column>
       <el-table-column label="答案" min-width="220">
         <template #default="{ row }">
-          <MarkdownRenderer :content="row.answer" />
+          <MarkdownRenderer :content="decodeAnswers(row.answer).join('；')" />
         </template>
       </el-table-column>
       <el-table-column label="解析" min-width="220">
@@ -318,6 +321,7 @@ import { addSubject, deleteSubject, listSubjects } from '@/api/subject'
 import { addTag, deleteTag, listTags } from '@/api/tag'
 import MarkdownRenderer from '@/components/MarkdownRenderer.vue'
 import { safeImageUrl } from '@/utils/imageUrl'
+import { decodeAnswers, decodeQuestionContent } from '@/utils/questionFormat'
 import type { Question } from '@/types/question'
 import type { QuestionType } from '@/types/questionType'
 import type { Subject } from '@/types/subject'
@@ -350,6 +354,7 @@ const tagForm = reactive({
 })
 
 const filters = reactive<{
+  keyword?: string
   subjectId?: number
   typeId?: number
   tagId?: number
@@ -395,6 +400,7 @@ const loadQuestions = async () => {
       subjectId: filters.subjectId,
       typeId: filters.typeId,
       tagId: filters.tagId,
+      keyword: filters.keyword,
     })
     questions.value = result.records
     pagination.total = result.total
@@ -500,6 +506,7 @@ const handleSearch = () => {
 }
 
 const handleReset = () => {
+  filters.keyword = undefined
   filters.subjectId = undefined
   filters.typeId = undefined
   filters.tagId = undefined

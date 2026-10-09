@@ -10,9 +10,11 @@ const router = createRouter({
     },
     {
       path: '/paper',
-      name: 'paper',
+      name: 'paper-preview',
       component: () => import('@/views/PaperGenerateView.vue'),
     },
+    { path: '/paper/practice', name: 'paper-practice', component: () => import('@/views/PaperGenerateView.vue') },
+    { path: '/paper/result', name: 'paper-result', component: () => import('@/views/PaperGenerateView.vue') },
     {
       path: '/questions/new',
       name: 'question-create',

@@ -29,32 +29,50 @@
         </el-select>
       </el-form-item>
 
-      <el-form-item label="题型" prop="typeId">
-        <el-select
-          v-model="form.typeId"
-          :disabled="!form.subjectId"
-          :loading="typeLoading"
-          allow-create
-          default-first-option
-          filterable
-          placeholder="选择题型"
-        >
-          <el-option
-            v-for="type in questionTypes"
-            :key="type.id"
-            :label="type.name"
-            :value="type.id"
-          />
-        </el-select>
+      <el-form-item label="题型">
+        <el-checkbox :model-value="questionKind === 'choice'" :disabled="!form.subjectId" @change="setQuestionKind('choice')">选择题</el-checkbox>
+        <el-checkbox :model-value="questionKind === 'fill'" :disabled="!form.subjectId" @change="setQuestionKind('fill')">填空题</el-checkbox>
       </el-form-item>
 
       <el-form-item label="题目" prop="content">
         <MarkdownEditor ref="contentInputRef" v-model="form.content" :rows="4" placeholder="输入题目正文，支持 Markdown 和 LaTeX" @formula="openFormulaEditor('content')" />
       </el-form-item>
 
-      <el-form-item label="答案">
-        <MarkdownEditor ref="answerInputRef" v-model="form.answer" :rows="3" placeholder="输入答案，支持 Markdown 和 LaTeX" @formula="openFormulaEditor('answer')" />
-      </el-form-item>
+      <template v-if="questionKind === 'choice'">
+        <el-form-item label="选项">
+          <div class="choice-option-list">
+            <div v-for="(option, index) in options" :key="index" class="choice-option-row">
+              <button type="button" class="option-letter" :class="{ selected: correctOptions.includes(index), multiple: multipleChoice }" @click="toggleCorrect(index)">{{ String.fromCharCode(65 + index) }}</button>
+              <el-input v-model="option.text" :placeholder="`选项 ${String.fromCharCode(65 + index)}`" />
+              <el-button text type="danger" @click="removeOption(index)">删除</el-button>
+            </div>
+            <div v-if="options.length < 26" class="choice-option-row add-option-row">
+              <button type="button" class="option-letter add-option" :class="{ multiple: multipleChoice }" aria-label="添加选项" @click="options.push({ text: '' })">+</button>
+            </div>
+          </div>
+        </el-form-item>
+        <el-form-item label="多选模式">
+          <el-switch v-model="multipleChoice" active-text="开启" inactive-text="关闭" @change="handleMultipleModeChange" />
+        </el-form-item>
+      </template>
+
+      <template v-else>
+        <el-form-item label="答案匹配">
+          <el-radio-group v-model="fillAnswerMode">
+            <el-radio-button value="alternatives">多种正确写法</el-radio-button>
+            <el-radio-button value="blanks">多个空</el-radio-button>
+          </el-radio-group>
+        </el-form-item>
+        <el-form-item v-for="(_, index) in fillAnswers" :key="index" :label="index === 0 ? '答案' : `答案${index + 1}`">
+          <div class="fill-answer-row">
+            <MarkdownEditor :ref="(el: any) => setFillAnswerRef(index, el)" v-model="fillAnswers[index]" :rows="2" placeholder="输入答案，支持 Markdown 和 LaTeX" />
+            <el-button text type="danger" @click="removeFillAnswer(index)">删除</el-button>
+          </div>
+        </el-form-item>
+        <el-form-item label="">
+          <el-button plain @click="fillAnswers.push('')">添加答案</el-button>
+        </el-form-item>
+      </template>
 
       <el-form-item label="解析">
         <MarkdownEditor ref="analysisInputRef" v-model="form.analysis" :rows="3" placeholder="输入解析，支持 Markdown 和 LaTeX" @formula="openFormulaEditor('analysis')" />
@@ -99,6 +117,7 @@ import LatexFormulaEditor from '@/components/LatexFormulaEditor.vue'
 import MarkdownEditor from '@/components/MarkdownEditor.vue'
 import TagSelector from '@/components/TagSelector.vue'
 import { insertInto, resolveInputTextarea } from '@/utils/latex'
+import { decodeAnswerData, decodeQuestionContent, encodeAnswers, encodeQuestionContent, isChoiceType, type FillAnswerMode } from '@/utils/questionFormat'
 import type { Question, QuestionAddRequest } from '@/types/question'
 import type { QuestionType } from '@/types/questionType'
 import type { Subject } from '@/types/subject'
@@ -107,6 +126,13 @@ import type { Tag } from '@/types/tag'
 const route = useRoute()
 const router = useRouter()
 const editingQuestion = ref<Question | null>(null)
+const questionKind = ref<'choice' | 'fill'>('choice')
+const options = ref<Array<{ text: string }>>([{ text: '' }, { text: '' }])
+const correctOptions = ref<number[]>([])
+const multipleChoice = ref(false)
+const fillAnswers = ref<string[]>([''])
+const fillAnswerMode = ref<FillAnswerMode>('alternatives')
+const fillAnswerRefs = ref<any[]>([])
 
 type QuestionFormState = Omit<QuestionAddRequest, 'subjectId' | 'typeId' | 'tagIds' | 'answer' | 'analysis'> & {
   subjectId: number | string
@@ -191,7 +217,6 @@ const selectedTagIds = computed<Array<number | string>>({
 
 const rules: FormRules<QuestionFormState> = {
   subjectId: [{ required: true, message: '请选择科目', trigger: 'change' }],
-  typeId: [{ required: true, message: '请选择题型', trigger: 'change' }],
   content: [{ required: true, message: '请输入题目内容', trigger: 'blur' }],
   difficulty: [{ required: true, message: '请选择难度', trigger: 'change' }],
 }
@@ -199,14 +224,29 @@ const rules: FormRules<QuestionFormState> = {
 const resetForm = () => {
   Object.assign(form, createInitialForm())
   questionTypes.value = []
+  questionKind.value = 'choice'
+  options.value = [{ text: '' }, { text: '' }]
+  correctOptions.value = []
+  multipleChoice.value = false
+  fillAnswers.value = ['']
+  fillAnswerMode.value = 'alternatives'
+  fillAnswerRefs.value = []
   formRef.value?.clearValidate()
 }
 
 const fillForm = async (question: Question) => {
+  const parsed = decodeQuestionContent(question.content)
+  const answerData = decodeAnswerData(question.answer)
+  questionKind.value = isChoiceType(question.typeName) ? 'choice' : 'fill'
+  options.value = parsed.options.length ? parsed.options : [{ text: '' }, { text: '' }]
+  correctOptions.value = (question.answer || '').toUpperCase().match(/[A-Z]/g)?.map((label) => label.charCodeAt(0) - 65).filter((index) => index < options.value.length) || []
+  multipleChoice.value = parsed.multiple
+  fillAnswers.value = answerData.values.length ? answerData.values : ['']
+  fillAnswerMode.value = answerData.mode
   Object.assign(form, {
     subjectId: question.subjectId,
     typeId: question.typeId,
-    content: question.content,
+    content: parsed.stem,
     answer: question.answer ?? '',
     analysis: question.analysis ?? '',
     imageUrl: question.imageUrl ?? '',
@@ -268,13 +308,9 @@ const ensureSubjectId = async () => {
 }
 
 const ensureTypeId = async (subjectId: number) => {
-  if (typeof form.typeId === 'number') {
-    return form.typeId
-  }
-
-  const name = normalizeCreatedName(String(form.typeId ?? ''), '题型名称')
+  const name = questionKind.value === 'choice' ? '选择题' : '填空题'
   const typeList = questionTypes.value.length ? questionTypes.value : await listQuestionTypes(subjectId)
-  const existingType = typeList.find((type) => type.name === name)
+  const existingType = typeList.find((type) => questionKind.value === 'choice' ? isChoiceType(type.name) : /填空|fill/i.test(type.name))
   if (existingType) {
     return existingType.id
   }
@@ -316,6 +352,41 @@ const handleClose = () => {
   router.push('/')
 }
 
+const toggleCorrect = (index: number) => {
+  if (multipleChoice.value) {
+    correctOptions.value = correctOptions.value.includes(index)
+      ? correctOptions.value.filter((item) => item !== index)
+      : [...correctOptions.value, index]
+  } else {
+    correctOptions.value = correctOptions.value.includes(index) ? [] : [index]
+  }
+}
+
+const setQuestionKind = (kind: 'choice' | 'fill') => { questionKind.value = kind }
+
+const handleMultipleModeChange = (enabled: string | number | boolean) => {
+  if (!enabled && correctOptions.value.length > 1) correctOptions.value = correctOptions.value.slice(0, 1)
+}
+
+const removeOption = (index: number) => {
+  if (options.value.length <= 1) {
+    ElMessage.warning('至少保留一个选项')
+    return
+  }
+  options.value.splice(index, 1)
+  correctOptions.value = correctOptions.value.filter((item) => item !== index).map((item) => item > index ? item - 1 : item)
+}
+
+const removeFillAnswer = (index: number) => {
+  if (fillAnswers.value.length <= 1) {
+    ElMessage.warning('至少保留一个答案框')
+    return
+  }
+  fillAnswers.value.splice(index, 1)
+}
+
+const setFillAnswerRef = (index: number, element: any) => { fillAnswerRefs.value[index] = element }
+
 const handleSubmit = async () => {
   await formRef.value?.validate()
 
@@ -328,8 +399,12 @@ const handleSubmit = async () => {
     const payload = {
       subjectId,
       typeId,
-      content: form.content.trim(),
-      answer: normalizeText(form.answer),
+      content: questionKind.value === 'choice'
+        ? encodeQuestionContent({ stem: form.content, options: options.value, multiple: multipleChoice.value })
+        : form.content.trim(),
+      answer: questionKind.value === 'choice'
+        ? (correctOptions.value.map((index) => String.fromCharCode(65 + index)).join(',') || null)
+        : encodeAnswers(fillAnswers.value.map((answer) => answer.trim()), fillAnswerMode.value),
       analysis: normalizeText(form.analysis),
       imageUrl: normalizeText(form.imageUrl),
       answerImageUrl: normalizeText(form.answerImageUrl),
@@ -376,5 +451,15 @@ onMounted(async () => {
 .question-form :deep(.el-select) {
   width: 100%;
 }
+.choice-option-list { display: grid; gap: 8px; width: 100%; max-width: 760px; }
+.choice-option-row { display: flex; align-items: center; gap: 10px; }
+.choice-option-row .el-input { flex: 1; }
+.option-letter { width: 34px; height: 34px; flex: 0 0 34px; border: 1px solid #d1d9e0; border-radius: 50%; background: #fff; color: #59636e; cursor: pointer; font-weight: 600; }
+.option-letter.selected { border-color: #67c23a; background: #67c23a; color: #fff; }
+.option-letter.multiple { border-radius: 8px; }
+.option-letter.add-option { border-style: dashed; color: #409eff; font-size: 20px; }
+.add-option-row { min-height: 36px; }
+.fill-answer-row { display: flex; gap: 8px; width: 100%; align-items: flex-start; }
+.fill-answer-row > :first-child { flex: 1; }
 
 </style>

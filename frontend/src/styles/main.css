@@ -145,6 +145,12 @@ body {
   align-items: start;
 }
 
+.paper-layout.paper-practice-layout { display: block; }
+.paper-practice-layout .paper-result { width: min(100%, 960px); margin: 0 auto; }
+.practice-page-heading { margin-bottom: 18px; }
+.practice-page-heading h1 { margin: 0; color: #1f2328; font-size: 24px; }
+.practice-page-heading p { margin: 6px 0 0; color: #59636e; }
+
 .paper-panel,
 .paper-result {
   padding: 18px;
@@ -334,11 +340,51 @@ body {
 }
 
 .practice-option input {
-  width: 18px;
-  height: 18px;
-  margin: 0;
-  accent-color: #0969da;
-  flex: 0 0 auto;
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.practice-option-badge {
+  width: 28px;
+  height: 28px;
+  flex: 0 0 28px;
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  border: 1.5px solid #8c959f;
+  border-radius: 50%;
+  color: #57606a;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.practice-option-badge.multiple {
+  border-radius: 7px;
+}
+
+.practice-option.selected .practice-option-badge {
+  border-color: #0969da;
+  background: #0969da;
+  color: #fff;
+}
+
+.practice-option.correct .practice-option-badge {
+  border-color: #2da44e;
+  background: #2da44e;
+  color: #fff;
+}
+
+.practice-option-text { flex: 1; }
+
+.practice-fill-answers { display: grid; gap: 10px; }
+.practice-fill-answers .text-answer-row { margin-top: 0; }
+.practice-fill-answers .el-textarea { flex: 1; }
+
+.result-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
 }
 
 .text-answer-row {

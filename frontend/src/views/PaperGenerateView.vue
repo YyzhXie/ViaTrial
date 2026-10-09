@@ -1,7 +1,7 @@
 <template>
   <main class="page-shell">
-    <section class="paper-layout">
-      <aside class="paper-panel">
+    <section class="paper-layout" :class="{ 'paper-practice-layout': route.name !== 'paper-preview' }">
+      <aside v-if="route.name === 'paper-preview'" class="paper-panel">
         <div class="panel-header">
           <h2>预览试卷</h2>
           <el-button :icon="RefreshLeft" @click="resetCounts">清空</el-button>
@@ -34,6 +34,8 @@
               <el-input-number
                 v-model="typeCountMap[type.id]"
                 :min="0"
+                :max="typeMaxCountMap[type.id] ?? 0"
+                :disabled="(typeMaxCountMap[type.id] ?? 0) === 0"
                 :step="1"
                 step-strictly
                 controls-position="right"
@@ -55,7 +57,29 @@
 
       <section class="paper-result">
         <el-empty v-if="!paper" description="尚未预览试卷" />
+        <template v-else-if="route.name === 'paper-result'">
+          <div class="practice-page-heading"><h1>批改结果</h1><p>本次练习已完成，查看每题答案与解析。</p></div>
+          <div class="result-summary">
+            <el-statistic title="试卷编号" :value="paper.paperId" />
+            <el-statistic title="答对题数" :value="resultScore.correct" />
+            <el-statistic title="正确率" :value="`${resultScore.rate}%`" />
+          </div>
+          <div class="paper-question-list">
+            <article v-for="(question, index) in paper.questions" :key="question.id" class="paper-question">
+              <header class="paper-question-header"><span class="question-index">第 {{ index + 1 }} 题</span><el-tag :type="isAnswerCorrect(question, index) ? 'success' : 'danger'">{{ isAnswerCorrect(question, index) ? '正确' : '错误' }}</el-tag></header>
+              <MarkdownRenderer :content="getPracticeQuestion(question).stem" />
+              <div v-if="getPracticeQuestion(question).options.length" class="practice-options">
+                <div v-for="option in getPracticeQuestion(question).options" :key="option.label" class="practice-option" :class="optionClassForResult(option.label, index, question)"><span class="practice-option-badge" :class="{ multiple: getPracticeQuestion(question).multiple }">{{ option.label }}</span><MarkdownRenderer :content="option.text" /></div>
+              </div>
+              <div v-else class="answer-content"><strong>你的答案：</strong>{{ (textAnswers[index] || []).join('；') }}</div>
+              <div class="answer-tip"><h3>参考答案</h3><MarkdownRenderer :content="answerDisplay(question)" /></div>
+              <div v-if="question.analysis" class="answer-analysis"><h3>解析</h3><MarkdownRenderer :content="question.analysis" /></div>
+            </article>
+          </div>
+          <el-button @click="router.push('/paper')">返回组卷</el-button>
+        </template>
         <template v-else>
+          <div v-if="route.name === 'paper-practice'" class="practice-page-heading"><h1>{{ paper.paperId }}</h1></div>
           <div class="result-summary">
             <el-statistic title="试卷编号" :value="paper.paperId" />
             <el-statistic title="请求题数" :value="paper.totalRequested" />
@@ -73,7 +97,7 @@
             />
           </div>
 
-          <template v-if="paperMode === 'preview'">
+          <template v-if="route.name === 'paper-preview'">
             <div class="paper-action-row">
               <el-button
                 type="success"
@@ -147,32 +171,29 @@
                     :disabled="submitted"
                     @change="toggleOption(option.label)"
                   />
-                  <span>{{ option.label }}. <MarkdownRenderer :content="option.text" /></span>
+                  <span class="practice-option-badge" :class="{ multiple: currentPracticeQuestion.multiple }">{{ option.label }}</span>
+                  <span class="practice-option-text"><MarkdownRenderer :content="option.text" /></span>
                 </label>
               </div>
-              <div v-else class="text-answer-row">
-                <el-input
-                  ref="textAnswerInputRef"
-                  v-model="textAnswers[currentIndex]"
-                  type="textarea"
-                  :rows="4"
-                  :disabled="submitted"
-                  placeholder="请输入答案"
-                  class="text-answer"
-                  @input="handleTextAnswer"
-                />
-                <el-button
-                  class="latex-insert-button"
-                  :disabled="submitted"
-                  @click="openFormulaEditor"
-                >
-                  插入公式
-                </el-button>
+              <div v-else class="practice-fill-answers">
+                <div v-for="(_, answerIndex) in getTextAnswerFields(currentQuestion)" :key="answerIndex" class="text-answer-row">
+                  <el-input
+                    ref="textAnswerInputRef"
+                    :model-value="textAnswers[currentIndex]?.[answerIndex] || ''"
+                    type="textarea"
+                    :rows="3"
+                    :disabled="submitted"
+                    :placeholder="getTextAnswerFields(currentQuestion).length > 1 ? `请输入答案${answerIndex + 1}` : '请输入答案'"
+                    class="text-answer"
+                    @update:model-value="(value: string) => handleTextAnswer(answerIndex, value)"
+                  />
+                  <el-button v-if="answerIndex === 0" class="latex-insert-button" :disabled="submitted" @click="openFormulaEditor">插入公式</el-button>
+                </div>
               </div>
 
               <div v-if="submitted && !isCurrentCorrect" class="answer-tip">
                 <h3>参考答案</h3>
-                <div class="answer-content"><MarkdownRenderer :content="currentQuestion?.answer || '暂无参考答案'" /></div>
+                <div class="answer-content"><MarkdownRenderer :content="currentQuestion ? answerDisplay(currentQuestion) : '暂无参考答案'" /></div>
               </div>
               <div v-if="submitted && currentQuestion?.analysis" class="answer-analysis">
                 <h3>解析</h3>
@@ -235,14 +256,17 @@
 import { EditPen, Finished, RefreshLeft, View } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { computed, nextTick, onMounted, reactive, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 
 import { generatePaper } from '@/api/paper'
+import { pageQuestions } from '@/api/question'
 import { listQuestionTypes } from '@/api/questionType'
 import { listSubjects } from '@/api/subject'
 import LatexFormulaEditor from '@/components/LatexFormulaEditor.vue'
 import MarkdownRenderer from '@/components/MarkdownRenderer.vue'
 import { insertInto, resolveInputTextarea } from '@/utils/latex'
 import { safeImageUrl } from '@/utils/imageUrl'
+import { decodeAnswerData, decodeQuestionContent } from '@/utils/questionFormat'
 import type { PaperGenerateResponse, PaperQuestion } from '@/types/paper'
 import type { QuestionType } from '@/types/questionType'
 import type { Subject } from '@/types/subject'
@@ -260,24 +284,27 @@ interface PracticeQuestion {
 }
 
 const subjects = ref<Subject[]>([])
+const route = useRoute()
+const router = useRouter()
 const questionTypes = ref<QuestionType[]>([])
 const selectedSubjectId = ref<number>()
 const paper = ref<PaperGenerateResponse>()
-const paperMode = ref<'preview' | 'practice'>('preview')
 const generating = ref(false)
 const submitted = ref(false)
 const currentIndex = ref(0)
 const resultText = ref('')
 const typeCountMap = reactive<Record<number, number>>({})
 const answers = reactive<Record<number, string[]>>({})
-const textAnswers = reactive<Record<number, string>>({})
+const textAnswers = reactive<Record<number, string[]>>({})
+const typeMaxCountMap = reactive<Record<number, number>>({})
+const resultScore = reactive({ correct: 0, rate: 0 })
 const textAnswerInputRef = ref<any>()
 const formulaDialogVisible = ref(false)
 const formulaCursor = ref<{ start: number; end: number } | null>(null)
 
 const openFormulaEditor = () => {
   const textarea = resolveInputTextarea(textAnswerInputRef.value)
-  const current = textAnswers[currentIndex.value] ?? ''
+  const current = textAnswers[currentIndex.value]?.[0] ?? ''
   formulaCursor.value = textarea
     ? { start: textarea.selectionStart, end: textarea.selectionEnd }
     : { start: current.length, end: current.length }
@@ -286,10 +313,10 @@ const openFormulaEditor = () => {
 
 const handleFormulaConfirm = (source: string) => {
   const index = currentIndex.value
-  const current = textAnswers[index] ?? ''
+  const current = textAnswers[index]?.[0] ?? ''
   const cursor = formulaCursor.value ?? { start: current.length, end: current.length }
 
-  textAnswers[index] = insertInto(current, cursor.start, cursor.end, source)
+  textAnswers[index] = [insertInto(current, cursor.start, cursor.end, source)]
   resultText.value = ''
 
   nextTick(() => {
@@ -324,9 +351,12 @@ const resetCounts = () => {
 
 const handleSubjectChange = async (subjectId: number) => {
   questionTypes.value = await listQuestionTypes(subjectId)
-  questionTypes.value.forEach((type) => {
-    typeCountMap[type.id] = typeCountMap[type.id] ?? 0
-  })
+  await Promise.all(questionTypes.value.map(async (type) => {
+    const inventory = await pageQuestions({ page: 1, size: 1, subjectId, typeId: type.id })
+    const availableCount = Math.min(inventory.total, 200)
+    typeMaxCountMap[type.id] = availableCount
+    typeCountMap[type.id] = availableCount
+  }))
 }
 
 const handleGenerate = async () => {
@@ -354,7 +384,6 @@ const handleGenerate = async () => {
       subjectId: selectedSubjectId.value,
       typeCountMap: payload,
     })
-    paperMode.value = 'preview'
     resetPracticeState()
   } finally {
     generating.value = false
@@ -416,16 +445,24 @@ const getPracticeQuestion = (question: PaperQuestion): PracticeQuestion => {
   return {
     stem: parsedOptions.stem,
     options: parsedOptions.options,
-    multiple: isMultipleQuestion(question, correctLabels),
+    multiple: parsedOptions.multiple || isMultipleQuestion(question, correctLabels),
     correctLabels,
   }
 }
 
 const parseOptions = (question: PaperQuestion) => {
+  const decoded = decodeQuestionContent(question.content)
+  if (decoded.options.length) {
+    return {
+      stem: decoded.stem,
+      multiple: decoded.multiple,
+      options: decoded.options.map((option, index) => ({ label: String.fromCharCode(65 + index), text: option.text })),
+    }
+  }
   const lines = question.content.split(/\r?\n/)
   const options: PracticeOption[] = []
   const stemLines: string[] = []
-  const optionPattern = /^\s*([A-Ha-h])[\.\、\．\:：\s]+(.+)$/
+  const optionPattern = /^\s*([A-Za-z])[\.\、\．\:：\s]+(.+)$/
 
   lines.forEach((line) => {
     const match = line.match(optionPattern)
@@ -451,6 +488,7 @@ const parseOptions = (question: PaperQuestion) => {
 
   return {
     stem: stemLines.join('\n').trim() || question.content,
+    multiple: false,
     options,
   }
 }
@@ -479,7 +517,7 @@ const getCorrectLabels = (question: PaperQuestion, options: PracticeOption[]) =>
   }
 
   const optionLabels = options.map((option) => option.label)
-  const labels = uniqueLabels(normalized.match(/[A-H]/g) || [])
+  const labels = uniqueLabels(normalized.match(/[A-Z]/g) || [])
     .filter((label) => optionLabels.includes(label))
     .sort()
   return labels
@@ -499,7 +537,8 @@ const resetPracticeState = () => {
 
 const startPractice = () => {
   resetPracticeState()
-  paperMode.value = 'practice'
+  if (paper.value) sessionStorage.setItem('viatrial-paper', JSON.stringify(paper.value))
+  router.push('/paper/practice')
 }
 
 const restartPractice = () => {
@@ -514,7 +553,15 @@ const hasAnswered = (question: PaperQuestion | undefined, index: number) => {
   if (practiceQuestion.options.length) {
     return Boolean(answers[index]?.length)
   }
-  return Boolean(textAnswers[index]?.trim())
+  const values = textAnswers[index] || []
+  return values.length >= getTextAnswerFields(question).length
+    && values.slice(0, getTextAnswerFields(question).length).every((value) => value.trim())
+}
+
+const getTextAnswerFields = (question?: PaperQuestion) => {
+  if (!question) return ['']
+  const answerData = decodeAnswerData(question.answer)
+  return answerData.mode === 'alternatives' ? [answerData.values[0] || ''] : answerData.values
 }
 
 const isOptionSelected = (label: string) => {
@@ -540,7 +587,11 @@ const toggleOption = (label: string) => {
   answers[currentIndex.value] = [...selected].sort()
 }
 
-const handleTextAnswer = () => {
+const handleTextAnswer = (answerIndex: number, value: string) => {
+  const index = currentIndex.value
+  const current = [...(textAnswers[index] || [''])]
+  current[answerIndex] = value
+  textAnswers[index] = current
   resultText.value = ''
 }
 
@@ -582,7 +633,12 @@ const isAnswerCorrect = (question: PaperQuestion, index: number) => {
     return Boolean(correct.length) && selected.length === correct.length
       && selected.every((item, itemIndex) => item === correct[itemIndex])
   }
-  return normalizeAnswer(textAnswers[index]) === normalizeAnswer(question.answer)
+  const actual = textAnswers[index] || []
+  const expected = decodeAnswerData(question.answer)
+  if (expected.mode === 'alternatives') {
+    return expected.values.some((value) => normalizeAnswer(actual[0]) === normalizeAnswer(value))
+  }
+  return expected.values.length === actual.length && expected.values.every((value, answerIndex) => normalizeAnswer(actual[answerIndex]) === normalizeAnswer(value))
 }
 
 const goPrev = () => {
@@ -610,12 +666,46 @@ const submitPaper = () => {
     return
   }
 
-  submitted.value = true
   const correctCount = paper.value.questions.filter((question, index) => isAnswerCorrect(question, index)).length
   const total = paper.value.questions.length
   const rate = total ? Math.round((correctCount / total) * 100) : 0
   resultText.value = `交卷完成：答对 ${correctCount} / ${total} 题，正确率 ${rate}%`
+  resultScore.correct = correctCount
+  resultScore.rate = rate
+  sessionStorage.setItem('viatrial-paper', JSON.stringify(paper.value))
+  sessionStorage.setItem('viatrial-paper-answers', JSON.stringify({ answers, textAnswers, resultScore }))
+  router.push('/paper/result')
 }
 
-onMounted(loadSubjects)
+const optionClassForResult = (label: string, index: number, question: PaperQuestion) => {
+  const classes: string[] = []
+  if (answers[index]?.includes(label)) classes.push('selected')
+  if (getPracticeQuestion(question).correctLabels.includes(label)) classes.push('correct')
+  return classes
+}
+
+const answerDisplay = (question: PaperQuestion) => {
+  const parsed = getPracticeQuestion(question)
+  if (parsed.options.length) return parsed.correctLabels.join('、') || '暂无参考答案'
+  return decodeAnswerData(question.answer).values.join('；') || '暂无参考答案'
+}
+
+onMounted(async () => {
+  await loadSubjects()
+  const savedPaper = sessionStorage.getItem('viatrial-paper')
+  if (savedPaper) {
+    try { paper.value = JSON.parse(savedPaper) as PaperGenerateResponse } catch { sessionStorage.removeItem('viatrial-paper') }
+  }
+  if (route.name === 'paper-result') {
+    const savedResult = sessionStorage.getItem('viatrial-paper-answers')
+    if (savedResult) {
+      try {
+        const state = JSON.parse(savedResult)
+        Object.assign(answers, state.answers)
+        Object.assign(textAnswers, state.textAnswers)
+        Object.assign(resultScore, state.resultScore)
+      } catch { /* Ignore an outdated saved practice session. */ }
+    }
+  }
+})
 </script>

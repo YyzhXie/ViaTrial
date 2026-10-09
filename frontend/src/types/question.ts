@@ -34,4 +34,5 @@ export interface QuestionPageRequest {
   subjectId?: number
   typeId?: number
   tagId?: number
+  keyword?: string
 }

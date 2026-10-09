@@ -2,7 +2,7 @@
 
 ViaTrial 是一个面向学生复习场景的本地题目管理系统，支持错题录入、科目与题型分类、标签筛选、LaTeX 公式渲染，以及按指定数量随机生成练习试卷。
 
-当前发行版本：`v0.3.1`
+当前发行版本：`v0.3.2`
 
 ## 核心功能
 
@@ -38,7 +38,7 @@ curl -X POST http://127.0.0.1:8080/api/v1/subjects \
 接口文档默认关闭（会暴露完整 API 面，含删除端点）。需要时临时开启：
 
 ```bash
-java -jar backend/target/viatrial-backend-0.3.1.jar --springdoc.api-docs.enabled=true --springdoc.swagger-ui.enabled=true
+java -jar backend/target/viatrial-backend-0.3.2.jar --springdoc.api-docs.enabled=true --springdoc.swagger-ui.enabled=true
 ```
 
 ## 技术栈
@@ -107,7 +107,7 @@ mvn package
 生成的 jar 位于：
 
 ```text
-backend/target/viatrial-backend-0.3.1.jar
+backend/target/viatrial-backend-0.3.2.jar
 ```
 
 ## 启动
@@ -118,7 +118,7 @@ backend/target/viatrial-backend-0.3.1.jar
 start.bat
 ```
 
-如果 `backend/target/viatrial-backend-0.3.1.jar` 不存在，脚本会自动执行前端构建、复制静态资源并打包后端。启动后访问：
+如果 `backend/target/viatrial-backend-0.3.2.jar` 不存在，脚本会自动执行前端构建、复制静态资源并打包后端。启动后访问：
 
 ```text
 http://localhost:8080

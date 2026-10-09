@@ -127,6 +127,9 @@ public class QuestionServiceImpl implements QuestionService {
         if (request.getTypeId() != null) {
             queryWrapper.eq("type_id", request.getTypeId());
         }
+        if (request.getKeyword() != null && !request.getKeyword().isBlank()) {
+            queryWrapper.like("content", request.getKeyword().trim());
+        }
         if (request.getTagId() != null) {
             List<Long> questionIds = questionTagMapper.selectList(
                             new QueryWrapper<QuestionTag>().eq("tag_id", request.getTagId()))
