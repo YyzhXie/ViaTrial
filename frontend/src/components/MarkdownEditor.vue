@@ -9,7 +9,6 @@
     </div>
     <el-input v-if="mode === 'write'" ref="inputRef" :model-value="modelValue" type="textarea" :rows="rows" :placeholder="placeholder" @update:model-value="$emit('update:modelValue', $event)" />
     <div v-else class="markdown-preview"><MarkdownRenderer :content="modelValue" /></div>
-    <div class="markdown-editor-footer">支持 Markdown 格式 · 公式可使用 LaTeX</div>
   </div>
 </template>
 
@@ -32,5 +31,4 @@ defineExpose({ inputRef })
 .markdown-tabs button.active { border-bottom-color: #fd8c73; color: #1f2328; font-weight: 600; }
 .markdown-editor :deep(.el-textarea__inner) { min-height: 100px; border: 0; border-radius: 0; box-shadow: none; resize: vertical; }
 .markdown-preview { min-height: 100px; padding: 12px; }
-.markdown-editor-footer { padding: 7px 12px; border-top: 1px solid #d1d9e0; background: #f6f8fa; color: #59636e; font-size: 12px; }
 </style>

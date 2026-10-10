@@ -14,6 +14,7 @@ import com.viatrial.mapper.QuestionMapper;
 import com.viatrial.mapper.QuestionTypeMapper;
 import com.viatrial.mapper.SubjectMapper;
 import com.viatrial.service.PaperService;
+import com.viatrial.service.ProgrammingQuestionContentValidator;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -40,15 +41,18 @@ public class PaperServiceImpl implements PaperService {
     private final QuestionMapper questionMapper;
 
     private final QuestionServiceImpl questionService;
+    private final ProgrammingQuestionContentValidator programmingQuestionContentValidator;
 
     public PaperServiceImpl(SubjectMapper subjectMapper,
                             QuestionTypeMapper questionTypeMapper,
                             QuestionMapper questionMapper,
-                            QuestionServiceImpl questionService) {
+                            QuestionServiceImpl questionService,
+                            ProgrammingQuestionContentValidator programmingQuestionContentValidator) {
         this.subjectMapper = subjectMapper;
         this.questionTypeMapper = questionTypeMapper;
         this.questionMapper = questionMapper;
         this.questionService = questionService;
+        this.programmingQuestionContentValidator = programmingQuestionContentValidator;
     }
 
     @Override
@@ -126,7 +130,7 @@ public class PaperServiceImpl implements PaperService {
         response.setSubjectName(questionResponse.getSubjectName());
         response.setTypeId(questionResponse.getTypeId());
         response.setTypeName(questionResponse.getTypeName());
-        response.setContent(questionResponse.getContent());
+        response.setContent(programmingQuestionContentValidator.practiceContent(questionResponse.getContent()));
         response.setAnswer(questionResponse.getAnswer());
         response.setAnalysis(questionResponse.getAnalysis());
         response.setImageUrl(questionResponse.getImageUrl());

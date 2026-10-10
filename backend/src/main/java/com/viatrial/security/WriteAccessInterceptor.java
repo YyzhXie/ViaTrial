@@ -62,6 +62,14 @@ public class WriteAccessInterceptor implements HandlerInterceptor {
 
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws IOException {
+        response.setHeader(HttpHeaders.CACHE_CONTROL, "no-store, max-age=0");
+        response.setHeader("Pragma", "no-cache");
+        response.setHeader("Expires", "0");
+        response.setHeader("X-Content-Type-Options", "nosniff");
+        response.setHeader("X-Frame-Options", "DENY");
+        response.setHeader("Referrer-Policy", "no-referrer");
+        response.setHeader("Cross-Origin-Resource-Policy", "same-origin");
+
         if (SAFE_METHODS.contains(request.getMethod())) {
             return true;
         }

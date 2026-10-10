@@ -1,1 +1,0 @@
-import{r as a}from"./questionFormat-BUCWHx5j.js";function e(t){return a({url:"/tags",method:"POST",data:t})}function s(){return a({url:"/tags",method:"GET"})}function u(t){return a({url:`/tags/${t}`,method:"DELETE"})}export{e as a,u as d,s as l};

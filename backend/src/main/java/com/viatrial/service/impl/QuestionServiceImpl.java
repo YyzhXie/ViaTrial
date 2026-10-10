@@ -20,6 +20,7 @@ import com.viatrial.mapper.QuestionTypeMapper;
 import com.viatrial.mapper.SubjectMapper;
 import com.viatrial.mapper.TagMapper;
 import com.viatrial.service.QuestionService;
+import com.viatrial.service.ProgrammingQuestionContentValidator;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -45,23 +46,27 @@ public class QuestionServiceImpl implements QuestionService {
     private final TagMapper tagMapper;
 
     private final QuestionTagMapper questionTagMapper;
+    private final ProgrammingQuestionContentValidator programmingQuestionContentValidator;
 
     public QuestionServiceImpl(QuestionMapper questionMapper,
                                SubjectMapper subjectMapper,
                                QuestionTypeMapper questionTypeMapper,
                                TagMapper tagMapper,
-                               QuestionTagMapper questionTagMapper) {
+                               QuestionTagMapper questionTagMapper,
+                               ProgrammingQuestionContentValidator programmingQuestionContentValidator) {
         this.questionMapper = questionMapper;
         this.subjectMapper = subjectMapper;
         this.questionTypeMapper = questionTypeMapper;
         this.tagMapper = tagMapper;
         this.questionTagMapper = questionTagMapper;
+        this.programmingQuestionContentValidator = programmingQuestionContentValidator;
     }
 
     @Override
     @Transactional
     public Long addQuestion(QuestionAddRequest request) {
-        validateSubjectAndQuestionType(request.getSubjectId(), request.getTypeId());
+        QuestionType questionType = validateSubjectAndQuestionType(request.getSubjectId(), request.getTypeId());
+        programmingQuestionContentValidator.validate(request.getContent(), questionType.getName());
         List<Long> tagIds = normalizeTagIds(request.getTagIds());
         validateTags(tagIds);
 
@@ -93,7 +98,8 @@ public class QuestionServiceImpl implements QuestionService {
             throw new BizException(ErrorCode.NOT_FOUND, "Question does not exist");
         }
 
-        validateSubjectAndQuestionType(request.getSubjectId(), request.getTypeId());
+        QuestionType questionType = validateSubjectAndQuestionType(request.getSubjectId(), request.getTypeId());
+        programmingQuestionContentValidator.validate(request.getContent(), questionType.getName());
         List<Long> tagIds = normalizeTagIds(request.getTagIds());
         validateTags(tagIds);
 
@@ -143,7 +149,10 @@ public class QuestionServiceImpl implements QuestionService {
         }
 
         Page<Question> page = questionMapper.selectPage(new Page<>(request.getPage(), request.getSize()), queryWrapper);
-        return PageResult.of(page.getTotal(), page.getCurrent(), page.getSize(), toQuestionResponses(page.getRecords()));
+        List<QuestionResponse> responses = toQuestionResponses(page.getRecords());
+        responses.forEach(response -> response.setContent(
+                programmingQuestionContentValidator.practiceContent(response.getContent())));
+        return PageResult.of(page.getTotal(), page.getCurrent(), page.getSize(), responses);
     }
 
     @Override
@@ -214,7 +223,7 @@ public class QuestionServiceImpl implements QuestionService {
         return new ArrayList<>(tagIds);
     }
 
-    private void validateSubjectAndQuestionType(Long subjectId, Long typeId) {
+    private QuestionType validateSubjectAndQuestionType(Long subjectId, Long typeId) {
         Subject subject = subjectMapper.selectById(subjectId);
         if (subject == null) {
             throw new BizException(ErrorCode.NOT_FOUND, "Subject does not exist");
@@ -227,6 +236,7 @@ public class QuestionServiceImpl implements QuestionService {
         if (!questionType.getSubjectId().equals(subjectId)) {
             throw new BizException(ErrorCode.PARAM_ERROR, "Question type does not belong to subject");
         }
+        return questionType;
     }
 
     private void validateTags(List<Long> tagIds) {

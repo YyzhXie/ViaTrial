@@ -228,10 +228,6 @@ body {
   color: #4b5563;
 }
 
-.manage-alert {
-  margin-bottom: 12px;
-}
-
 .paper-action-row {
   display: flex;
   justify-content: flex-end;

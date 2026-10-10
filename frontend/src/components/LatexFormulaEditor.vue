@@ -31,7 +31,6 @@
       <div class="visual-editor">
         <div class="pane-title">可视化编辑</div>
         <div ref="mathfieldHost" class="mathfield-host" />
-        <div class="editor-hint">点击公式区域即可用键盘直接输入数字与符号，也可输入 LaTeX 命令（如 \frac{1}{2}）。</div>
       </div>
 
       <div class="editor-output">
@@ -234,11 +233,6 @@ watch(
 .mathfield-host :deep(math-field:focus-within) {
   border-color: #409eff;
   box-shadow: 0 0 0 2px rgba(64, 158, 255, 0.12);
-}
-
-.editor-hint {
-  font-size: 12px;
-  color: #9ca3af;
 }
 
 .editor-output {

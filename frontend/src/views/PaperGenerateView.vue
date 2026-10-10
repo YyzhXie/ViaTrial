@@ -58,7 +58,7 @@
       <section class="paper-result">
         <el-empty v-if="!paper" description="尚未预览试卷" />
         <template v-else-if="route.name === 'paper-result'">
-          <div class="practice-page-heading"><h1>批改结果</h1><p>本次练习已完成，查看每题答案与解析。</p></div>
+          <div class="practice-page-heading"><h1>批改结果</h1></div>
           <div class="result-summary">
             <el-statistic title="试卷编号" :value="paper.paperId" />
             <el-statistic title="答对题数" :value="resultScore.correct" />
@@ -71,9 +71,28 @@
               <div v-if="getPracticeQuestion(question).options.length" class="practice-options">
                 <div v-for="option in getPracticeQuestion(question).options" :key="option.label" class="practice-option" :class="optionClassForResult(option.label, index, question)"><span class="practice-option-badge" :class="{ multiple: getPracticeQuestion(question).multiple }">{{ option.label }}</span><MarkdownRenderer :content="option.text" /></div>
               </div>
+              <div v-else-if="programmingData(question)" class="program-result-answer">
+                <CodeEditor :model-value="codeFor(question, index)" :language="codeLanguageFor(question, index)" min-height="220px" readonly />
+                <div v-if="programGradeResults[index]" class="program-grade-results">
+                  <header class="program-grade-overall">
+                    <el-tag :type="programGradeResults[index].verdict === 'AC' ? 'success' : 'danger'" effect="light">完整测试集 · {{ programGradeResults[index].verdict }}</el-tag>
+                    <span>{{ programGradeResults[index].status }}</span>
+                  </header>
+                  <div class="program-grade-points">
+                    <div
+                      v-for="point in programGradeResults[index].testPoints || []"
+                      :key="point.index"
+                      class="program-grade-point"
+                    >
+                      <el-tag :type="point.verdict === 'AC' ? 'success' : 'danger'" effect="light">{{ point.label }} · {{ point.verdict }}</el-tag>
+                      <span>{{ point.status }}<template v-if="point.time"> · {{ point.time }}s</template><template v-if="point.memory"> · {{ point.memory }}</template></span>
+                    </div>
+                  </div>
+                </div>
+              </div>
               <div v-else class="answer-content"><strong>你的答案：</strong>{{ (textAnswers[index] || []).join('；') }}</div>
-              <div class="answer-tip"><h3>参考答案</h3><MarkdownRenderer :content="answerDisplay(question)" /></div>
-              <div v-if="question.analysis" class="answer-analysis"><h3>解析</h3><MarkdownRenderer :content="question.analysis" /></div>
+              <div v-if="!programmingData(question)" class="answer-tip"><h3>参考答案</h3><MarkdownRenderer :content="answerDisplay(question)" /></div>
+              <div v-if="question.analysis && (!programmingData(question) || programGradeResults[index]?.verdict !== 'AC')" class="answer-analysis"><h3>解析</h3><MarkdownRenderer :content="question.analysis" /></div>
             </article>
           </div>
           <el-button @click="router.push('/paper')">返回组卷</el-button>
@@ -175,6 +194,62 @@
                   <span class="practice-option-text"><MarkdownRenderer :content="option.text" /></span>
                 </label>
               </div>
+              <div v-else-if="currentQuestion && programmingData(currentQuestion)" class="program-practice">
+                <div class="program-language-row">
+                  <label for="practice-language">编程语言</label>
+                  <el-select id="practice-language" :model-value="codeLanguageFor(currentQuestion, currentIndex)" :disabled="submitted" @change="changeCodeLanguage">
+                    <el-option v-for="(label, language) in languageLabels" :key="language" :label="label" :value="language" />
+                  </el-select>
+                </div>
+                <div v-if="programmingData(currentQuestion)?.competitionMode" class="program-limit-tags">
+                  <el-tag effect="plain">时间限制 {{ programmingData(currentQuestion)?.timeLimitMs }} ms</el-tag>
+                  <el-tag effect="plain">内存限制 {{ programmingData(currentQuestion)?.memoryLimitMb }} MB</el-tag>
+                </div>
+                <CodeEditor :model-value="codeFor(currentQuestion, currentIndex)" :language="codeLanguageFor(currentQuestion, currentIndex)" min-height="360px" max-height="min(70vh, 640px)" :readonly="submitted" @update:model-value="handleCodeChange" />
+                <section class="program-samples">
+                  <header class="program-samples-heading">
+                    <h3>测试样例</h3>
+                    <el-tag effect="plain">{{ publicProgramSamples(currentQuestion).length }} 个样例</el-tag>
+                  </header>
+                  <el-empty v-if="!publicProgramSamples(currentQuestion).length" description="暂无公开样例" />
+                  <el-collapse v-else v-model="expandedProgramSamples">
+                    <el-collapse-item
+                      v-for="sample in publicProgramSamples(currentQuestion)"
+                      :key="sample.caseIndex"
+                      :name="`${currentIndex}-${sample.caseIndex}`"
+                    >
+                      <template #title>
+                        <div class="program-sample-title">
+                          <strong>样例 {{ sample.sampleIndex + 1 }}</strong>
+                          <el-tag v-if="programResults[currentIndex]?.[sample.caseIndex]" :type="programResults[currentIndex][sample.caseIndex]?.verdict === 'AC' ? 'success' : 'danger'" size="small">
+                            {{ programResults[currentIndex][sample.caseIndex]?.verdict }}
+                          </el-tag>
+                        </div>
+                      </template>
+                      <div v-if="isProgramSampleExpanded(sample.caseIndex)" class="program-sample-body">
+                        <div class="program-sample-value"><strong>标准输入</strong><pre>{{ sample.testCase.input || '（空）' }}</pre></div>
+                        <div class="program-sample-value"><strong>期望输出</strong><pre>{{ sample.testCase.expectedOutput || '（空）' }}</pre></div>
+                        <el-button
+                          type="primary"
+                          plain
+                          :loading="runningProgramCase === sample.caseIndex"
+                          :disabled="submitted || runningProgram || !codeAnswers[currentIndex]?.trim()"
+                          @click="runProgramCase(sample.caseIndex)"
+                        >运行此样例</el-button>
+                        <div v-if="programResults[currentIndex]?.[sample.caseIndex]" class="program-sample-result">
+                          <el-tag :type="programResults[currentIndex][sample.caseIndex]?.verdict === 'AC' ? 'success' : 'danger'">
+                            {{ programResults[currentIndex][sample.caseIndex]?.verdict }}
+                          </el-tag>
+                          <span>{{ programResults[currentIndex][sample.caseIndex]?.status }}<template v-if="programResults[currentIndex][sample.caseIndex]?.time"> · {{ programResults[currentIndex][sample.caseIndex]?.time }}s</template><template v-if="programResults[currentIndex][sample.caseIndex]?.memory"> · {{ programResults[currentIndex][sample.caseIndex]?.memory }}</template></span>
+                          <pre v-if="programResults[currentIndex][sample.caseIndex]?.compileOutput || programResults[currentIndex][sample.caseIndex]?.stderr || programResults[currentIndex][sample.caseIndex]?.stdout">{{ programResults[currentIndex][sample.caseIndex]?.compileOutput || programResults[currentIndex][sample.caseIndex]?.stderr || programResults[currentIndex][sample.caseIndex]?.stdout }}</pre>
+                        </div>
+                      </div>
+                    </el-collapse-item>
+                  </el-collapse>
+                </section>
+                <el-alert type="info" :closable="false" show-icon title="代码以当前 Windows 用户权限运行，仅运行自己信任的代码。" />
+                <el-button type="success" :loading="runningProgram && runningProgramCase === null" :disabled="submitted || runningProgram || !codeAnswers[currentIndex]?.trim() || !publicProgramSamples(currentQuestion).length" @click="runCurrentProgram">运行全部样例</el-button>
+              </div>
               <div v-else class="practice-fill-answers">
                 <div v-for="(_, answerIndex) in getTextAnswerFields(currentQuestion)" :key="answerIndex" class="text-answer-row">
                   <el-input
@@ -191,11 +266,11 @@
                 </div>
               </div>
 
-              <div v-if="submitted && !isCurrentCorrect" class="answer-tip">
+              <div v-if="submitted && !isCurrentCorrect && (!currentQuestion || !programmingData(currentQuestion))" class="answer-tip">
                 <h3>参考答案</h3>
                 <div class="answer-content"><MarkdownRenderer :content="currentQuestion ? answerDisplay(currentQuestion) : '暂无参考答案'" /></div>
               </div>
-              <div v-if="submitted && currentQuestion?.analysis" class="answer-analysis">
+              <div v-if="submitted && currentQuestion?.analysis && (!programmingData(currentQuestion) || programGradeResults[currentIndex]?.verdict !== 'AC')" class="answer-analysis">
                 <h3>解析</h3>
                 <div class="answer-content"><MarkdownRenderer :content="currentQuestion.analysis" /></div>
               </div>
@@ -230,7 +305,7 @@
 
             <div class="practice-actions">
               <el-button :icon="RefreshLeft" @click="restartPractice">重新做题</el-button>
-              <el-button type="primary" :icon="Finished" :disabled="submitted" @click="submitPaper">
+              <el-button type="primary" :icon="Finished" :disabled="submitted || gradingPrograms" :loading="gradingPrograms" @click="submitPaper">
                 交卷
               </el-button>
             </div>
@@ -259,14 +334,17 @@ import { computed, nextTick, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import { generatePaper } from '@/api/paper'
+import { executeCode, gradeCode, type CodeExecutionResult, type CodeGradingResult } from '@/api/codeExecution'
 import { pageQuestions } from '@/api/question'
 import { listQuestionTypes } from '@/api/questionType'
 import { listSubjects } from '@/api/subject'
 import LatexFormulaEditor from '@/components/LatexFormulaEditor.vue'
+import CodeEditor from '@/components/CodeEditor.vue'
 import MarkdownRenderer from '@/components/MarkdownRenderer.vue'
 import { insertInto, resolveInputTextarea } from '@/utils/latex'
 import { safeImageUrl } from '@/utils/imageUrl'
 import { decodeAnswerData, decodeQuestionContent } from '@/utils/questionFormat'
+import { decodeProgrammingQuestion, languageLabels, type ProgrammingLanguage, type ProgrammingQuestionData } from '@/utils/programmingQuestion'
 import type { PaperGenerateResponse, PaperQuestion } from '@/types/paper'
 import type { QuestionType } from '@/types/questionType'
 import type { Subject } from '@/types/subject'
@@ -296,8 +374,17 @@ const resultText = ref('')
 const typeCountMap = reactive<Record<number, number>>({})
 const answers = reactive<Record<number, string[]>>({})
 const textAnswers = reactive<Record<number, string[]>>({})
+const codeAnswers = reactive<Record<number, string>>({})
+const codeLanguages = reactive<Record<number, ProgrammingLanguage>>({})
+const programResults = reactive<Record<number, Array<CodeExecutionResult | null>>>({})
+const programGradeResults = reactive<Record<number, CodeGradingResult>>({})
+const runningProgram = ref(false)
+const gradingPrograms = ref(false)
+const runningProgramCase = ref<number | null>(null)
+const expandedProgramSamples = ref<string[]>(['0-0'])
 const typeMaxCountMap = reactive<Record<number, number>>({})
 const resultScore = reactive({ correct: 0, rate: 0 })
+const programmingDataCache = new WeakMap<PaperQuestion, ProgrammingQuestionData | null>()
 const textAnswerInputRef = ref<any>()
 const formulaDialogVisible = ref(false)
 const formulaCursor = ref<{ start: number; end: number } | null>(null)
@@ -450,7 +537,31 @@ const getPracticeQuestion = (question: PaperQuestion): PracticeQuestion => {
   }
 }
 
+const programmingData = (question: PaperQuestion) => {
+  if (programmingDataCache.has(question)) return programmingDataCache.get(question) ?? null
+  const data = decodeProgrammingQuestion(question.content)
+  programmingDataCache.set(question, data)
+  return data
+}
+
+const publicProgramSamples = (question: PaperQuestion) =>
+  (programmingData(question)?.testCases ?? [])
+    .map((testCase, caseIndex) => ({ testCase, caseIndex }))
+    .filter(({ testCase }) => testCase.isSample)
+    .map((sample, sampleIndex) => ({ ...sample, sampleIndex }))
+
+const isProgramSampleExpanded = (sampleIndex: number) =>
+  expandedProgramSamples.value.includes(`${currentIndex.value}-${sampleIndex}`)
+
+const codeLanguageFor = (question: PaperQuestion, index: number) => codeLanguages[index] ?? programmingData(question)?.language ?? 'cpp'
+
+const codeFor = (_question: PaperQuestion, index: number) => codeAnswers[index] ?? ''
+
 const parseOptions = (question: PaperQuestion) => {
+  const programming = programmingData(question)
+  if (programming) {
+    return { stem: programming.statement, multiple: false, options: [] as PracticeOption[] }
+  }
   const decoded = decodeQuestionContent(question.content)
   if (decoded.options.length) {
     return {
@@ -530,6 +641,10 @@ const resetPracticeState = () => {
   Object.keys(textAnswers).forEach((key) => {
     delete textAnswers[Number(key)]
   })
+  Object.keys(codeAnswers).forEach((key) => delete codeAnswers[Number(key)])
+  Object.keys(codeLanguages).forEach((key) => delete codeLanguages[Number(key)])
+  Object.keys(programResults).forEach((key) => delete programResults[Number(key)])
+  Object.keys(programGradeResults).forEach((key) => delete programGradeResults[Number(key)])
   currentIndex.value = 0
   submitted.value = false
   resultText.value = ''
@@ -550,6 +665,9 @@ const hasAnswered = (question: PaperQuestion | undefined, index: number) => {
     return false
   }
   const practiceQuestion = getPracticeQuestion(question)
+  if (programmingData(question)) {
+    return Boolean(codeAnswers[index]?.trim())
+  }
   if (practiceQuestion.options.length) {
     return Boolean(answers[index]?.length)
   }
@@ -595,6 +713,19 @@ const handleTextAnswer = (answerIndex: number, value: string) => {
   resultText.value = ''
 }
 
+const handleCodeChange = (value: string) => {
+  codeAnswers[currentIndex.value] = value
+  delete programResults[currentIndex.value]
+  delete programGradeResults[currentIndex.value]
+}
+
+const changeCodeLanguage = (language: ProgrammingLanguage) => {
+  const index = currentIndex.value
+  codeLanguages[index] = language
+  delete programResults[index]
+  delete programGradeResults[index]
+}
+
 const optionClass = (label: string) => {
   const classes: string[] = []
   if (isOptionSelected(label)) {
@@ -626,6 +757,10 @@ const cardClass = (index: number) => {
 }
 
 const isAnswerCorrect = (question: PaperQuestion, index: number) => {
+  const data = programmingData(question)
+  if (data) {
+    return programGradeResults[index]?.verdict === 'AC'
+  }
   const practiceQuestion = getPracticeQuestion(question)
   if (practiceQuestion.options.length) {
     const selected = [...(answers[index] || [])].sort()
@@ -639,6 +774,72 @@ const isAnswerCorrect = (question: PaperQuestion, index: number) => {
     return expected.values.some((value) => normalizeAnswer(actual[0]) === normalizeAnswer(value))
   }
   return expected.values.length === actual.length && expected.values.every((value, answerIndex) => normalizeAnswer(actual[answerIndex]) === normalizeAnswer(value))
+}
+
+const runCurrentProgram = async () => {
+  const question = currentQuestion.value
+  const index = currentIndex.value
+  const data = question ? programmingData(question) : null
+  if (!data || !question) return
+  const samples = publicProgramSamples(question)
+  if (!samples.length) {
+    ElMessage.warning('该编程题没有公开样例')
+    return
+  }
+  const language = codeLanguages[index] ?? data.language
+  const code = codeAnswers[index] ?? ''
+  codeAnswers[index] = code
+  runningProgram.value = true
+  runningProgramCase.value = null
+  programResults[index] = Array.from({ length: data.testCases.length }, () => null)
+  try {
+    for (const { caseIndex, testCase } of samples) {
+      const result = await executeCode({
+        sourceCode: code,
+        language,
+        input: testCase.input,
+        expectedOutput: testCase.expectedOutput,
+        timeLimitMs: data.competitionMode ? data.timeLimitMs : undefined,
+        memoryLimitMb: data.competitionMode ? data.memoryLimitMb : undefined,
+      })
+      programResults[index][caseIndex] = result
+    }
+  } catch {
+    ElMessage.error('本地代码执行失败，请检查编译器和运行时配置')
+  } finally {
+    runningProgram.value = false
+  }
+}
+
+const runProgramCase = async (caseIndex: number) => {
+  const question = currentQuestion.value
+  const data = question ? programmingData(question) : null
+  const testCase = data?.testCases[caseIndex]
+  if (!data || !testCase?.isSample || submitted.value || runningProgram.value) return
+
+  const index = currentIndex.value
+  const caseResults = programResults[index]?.length === data.testCases.length
+    ? programResults[index]!
+    : Array.from({ length: data.testCases.length }, () => null)
+  programResults[index] = caseResults
+
+  runningProgram.value = true
+  runningProgramCase.value = caseIndex
+  try {
+    caseResults[caseIndex] = await executeCode({
+      sourceCode: codeAnswers[index] ?? '',
+      language: codeLanguageFor(question!, index),
+      input: testCase.input,
+      expectedOutput: testCase.expectedOutput,
+      timeLimitMs: data.competitionMode ? data.timeLimitMs : undefined,
+      memoryLimitMb: data.competitionMode ? data.memoryLimitMb : undefined,
+    })
+  } catch {
+    ElMessage.error('样例执行失败，请检查本机编译器和运行时配置')
+  } finally {
+    runningProgram.value = false
+    runningProgramCase.value = null
+  }
 }
 
 const goPrev = () => {
@@ -657,7 +858,7 @@ const jumpToQuestion = (index: number) => {
   currentIndex.value = index
 }
 
-const submitPaper = () => {
+const submitPaper = async () => {
   if (!paper.value) {
     return
   }
@@ -666,15 +867,33 @@ const submitPaper = () => {
     return
   }
 
-  const correctCount = paper.value.questions.filter((question, index) => isAnswerCorrect(question, index)).length
-  const total = paper.value.questions.length
-  const rate = total ? Math.round((correctCount / total) * 100) : 0
-  resultText.value = `交卷完成：答对 ${correctCount} / ${total} 题，正确率 ${rate}%`
-  resultScore.correct = correctCount
-  resultScore.rate = rate
-  sessionStorage.setItem('viatrial-paper', JSON.stringify(paper.value))
-  sessionStorage.setItem('viatrial-paper-answers', JSON.stringify({ answers, textAnswers, resultScore }))
-  router.push('/paper/result')
+  gradingPrograms.value = true
+  try {
+    for (const [index, question] of paper.value.questions.entries()) {
+      if (!programmingData(question)) continue
+      const sourceCode = codeAnswers[index]?.trim()
+      if (!sourceCode) continue
+      programGradeResults[index] = await gradeCode({
+        questionId: question.id,
+        sourceCode,
+        language: codeLanguages[index] ?? programmingData(question)!.language,
+      })
+    }
+    submitted.value = true
+    const correctCount = paper.value.questions.filter((question, index) => isAnswerCorrect(question, index)).length
+    const total = paper.value.questions.length
+    const rate = total ? Math.round((correctCount / total) * 100) : 0
+    resultText.value = `交卷完成：答对 ${correctCount} / ${total} 题，正确率 ${rate}%`
+    resultScore.correct = correctCount
+    resultScore.rate = rate
+    sessionStorage.setItem('viatrial-paper', JSON.stringify(paper.value))
+    sessionStorage.setItem('viatrial-paper-answers', JSON.stringify({ answers, textAnswers, codeAnswers, codeLanguages, programResults, programGradeResults, resultScore }))
+    router.push('/paper/result')
+  } catch {
+    ElMessage.error('编程题批改服务暂时不可用，请稍后重试；本次答案尚未提交')
+  } finally {
+    gradingPrograms.value = false
+  }
 }
 
 const optionClassForResult = (label: string, index: number, question: PaperQuestion) => {
@@ -703,9 +922,40 @@ onMounted(async () => {
         const state = JSON.parse(savedResult)
         Object.assign(answers, state.answers)
         Object.assign(textAnswers, state.textAnswers)
+        Object.assign(codeAnswers, state.codeAnswers)
+        Object.assign(codeLanguages, state.codeLanguages)
+        Object.assign(programResults, state.programResults)
+        Object.assign(programGradeResults, state.programGradeResults)
         Object.assign(resultScore, state.resultScore)
       } catch { /* Ignore an outdated saved practice session. */ }
     }
   }
 })
 </script>
+
+<style scoped>
+.program-practice { display: grid; gap: 12px; }
+.program-result-answer { display: grid; gap: 10px; margin: 16px 0; }
+.program-grade-results { display: grid; gap: 12px; }
+.program-grade-overall { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.program-grade-points { display: flex; flex-wrap: wrap; align-items: stretch; gap: 8px; }
+.program-grade-point { display: flex; flex: 1 1 260px; flex-wrap: wrap; align-items: center; gap: 8px; min-width: min(260px, 100%); padding: 8px 10px; border: 1px solid #e4e7ed; border-radius: 6px; background: #fff; }
+.program-language-row { display: grid; grid-template-columns: max-content minmax(180px, 240px); align-items: center; gap: 12px; width: max-content; max-width: 100%; padding: 10px 12px; border: 1px solid #d1d9e0; border-radius: 8px; background: #fff; }
+.program-language-row label { color: #303133; font-weight: 600; white-space: nowrap; }
+.program-language-row .el-select { width: 100%; min-width: 0; }
+.program-limit-tags { display: flex; flex-wrap: wrap; gap: 8px; }
+.program-run-list { display: grid; gap: 10px; }
+.program-run-result { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; color: #59636e; }
+.program-run-result pre { width: 100%; max-height: 180px; margin: 0; padding: 10px; overflow: auto; background: #f6f8fa; border-radius: 4px; white-space: pre-wrap; }
+.program-samples { display: grid; gap: 10px; padding: 14px; border: 1px solid #d1d9e0; border-radius: 8px; background: #fff; }
+.program-samples-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.program-samples-heading h3 { margin: 0; font-size: 16px; }
+.program-samples-heading p { margin: 4px 0 0; color: #667085; font-size: 13px; }
+.program-sample-title { display: flex; align-items: center; gap: 10px; width: 100%; padding-right: 12px; }
+.program-sample-body { display: grid; gap: 12px; padding: 4px 0 8px; }
+.program-sample-value strong { display: block; margin-bottom: 5px; }
+.program-sample-value pre, .program-sample-result pre { max-height: 180px; margin: 0; padding: 10px; overflow: auto; border-radius: 5px; background: #f6f8fa; white-space: pre-wrap; overflow-wrap: anywhere; }
+.program-sample-result { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; color: #59636e; }
+.program-sample-result pre { width: 100%; }
+@media (max-width: 520px) { .program-language-row { grid-template-columns: 1fr; width: 100%; } }
+</style>

@@ -2,7 +2,7 @@
 
 ViaTrial 是一个面向学生复习场景的本地题目管理系统，支持错题录入、科目与题型分类、标签筛选、LaTeX 公式渲染，以及按指定数量随机生成练习试卷。
 
-当前发行版本：`v0.3.2`
+当前开发版本：`v0.3.3`（基于 `v0.3.2`）
 
 ## 核心功能
 
@@ -12,6 +12,7 @@ ViaTrial 是一个面向学生复习场景的本地题目管理系统，支持�
 - 随机组卷：按题型数量配置预览试卷，并支持进入做题模式。
 - LaTeX 渲染：前端集成 KaTeX，用于展示数学公式。
 - 公式输入：题目录入（题目/答案/解析）与填空题作答处提供可视化公式编辑器，支持源码编辑、模板插入与实时预览。
+- 编程题：新增题目时勾选编程题即可录入题目描述、C/C++/Java/Python 3 单文件代码和自定义测试点；练习时从空白编辑器开始作答并逐点编译运行。
 - 本地数据：使用 SQLite 数据库，首次启动自动创建数据库与表结构。
 - 本地安全：默认只监听本机地址，写操作叠加访问令牌校验，局域网设备无法直接修改题库。
 
@@ -35,10 +36,12 @@ curl -X POST http://127.0.0.1:8080/api/v1/subjects \
   -d '{"name":"高等数学"}'
 ```
 
+编程题在运行 ViaTrial 的本机执行，不依赖 Judge0。支持单文件 C、C++、Java 和 Python 3。Java 使用 ViaTrial 自带的 Java 运行时和编译模块；如果本机没有 Python，或没有 C/C++ 编译器，首次运行该语言时会自动从 python.org / ziglang.org 下载对应工具链（约 110 MiB），在校验 SHA-256 后安装到 ViaTrial 数据目录的 `toolchains/` 并缓存，之后可离线判题。已有工具链时也可通过 `VIATRIAL__CODE_EXECUTION__COMPILER__C`、`VIATRIAL__CODE_EXECUTION__COMPILER__CPP`、`VIATRIAL__CODE_EXECUTION__RUNTIME__JAVA` 和 `VIATRIAL__CODE_EXECUTION__RUNTIME__PYTHON` 指定本机可执行文件。每次运行会使用独立临时目录、限制运行时间与输出大小，并在结束后清理目录。代码以启动 ViaTrial 的 Windows 用户权限执行；仅运行自己信任的代码，不要将服务暴露给不可信用户。题库仍保存在 SQLite 中。
+
 接口文档默认关闭（会暴露完整 API 面，含删除端点）。需要时临时开启：
 
 ```bash
-java -jar backend/target/viatrial-backend-0.3.2.jar --springdoc.api-docs.enabled=true --springdoc.swagger-ui.enabled=true
+java -jar backend/target/viatrial-backend-0.3.3.jar --springdoc.api-docs.enabled=true --springdoc.swagger-ui.enabled=true
 ```
 
 ## 技术栈
@@ -107,7 +110,7 @@ mvn package
 生成的 jar 位于：
 
 ```text
-backend/target/viatrial-backend-0.3.2.jar
+backend/target/viatrial-backend-0.3.3.jar
 ```
 
 ## 启动
@@ -118,7 +121,7 @@ backend/target/viatrial-backend-0.3.2.jar
 start.bat
 ```
 
-如果 `backend/target/viatrial-backend-0.3.2.jar` 不存在，脚本会自动执行前端构建、复制静态资源并打包后端。启动后访问：
+如果 `backend/target/viatrial-backend-0.3.3.jar` 不存在，脚本会自动执行前端构建、复制静态资源并打包后端。启动后访问：
 
 ```text
 http://localhost:8080

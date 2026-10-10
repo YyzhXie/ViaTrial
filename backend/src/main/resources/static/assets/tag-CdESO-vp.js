@@ -1,0 +1,1 @@
+import{r as a}from"./programmingQuestion-CNv5NxY9.js";function e(t){return a({url:"/tags",method:"POST",data:t})}function s(){return a({url:"/tags",method:"GET"})}function u(t){return a({url:`/tags/${t}`,method:"DELETE"})}export{e as a,u as d,s as l};

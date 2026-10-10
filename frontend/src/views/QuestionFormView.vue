@@ -1,7 +1,7 @@
 <template>
   <main class="page-shell question-form-page">
     <header class="question-form-header">
-      <div><h1>{{ dialogTitle }}</h1><p>使用 Markdown 编写题目内容，并可随时预览效果。</p></div>
+      <div><h1>{{ dialogTitle }}</h1></div>
       <div class="question-form-actions"><el-button @click="handleClose">取消</el-button><el-button type="primary" :loading="submitting" @click="handleSubmit">保存题目</el-button></div>
     </header>
     <el-form
@@ -32,11 +32,62 @@
       <el-form-item label="题型">
         <el-checkbox :model-value="questionKind === 'choice'" :disabled="!form.subjectId" @change="setQuestionKind('choice')">选择题</el-checkbox>
         <el-checkbox :model-value="questionKind === 'fill'" :disabled="!form.subjectId" @change="setQuestionKind('fill')">填空题</el-checkbox>
+        <el-checkbox :model-value="questionKind === 'programming'" :disabled="!form.subjectId" @change="setQuestionKind('programming')">编程题</el-checkbox>
       </el-form-item>
 
-      <el-form-item label="题目" prop="content">
+      <el-form-item v-if="questionKind !== 'programming'" label="题目" prop="content">
         <MarkdownEditor ref="contentInputRef" v-model="form.content" :rows="4" placeholder="输入题目正文，支持 Markdown 和 LaTeX" @formula="openFormulaEditor('content')" />
       </el-form-item>
+
+      <template v-if="questionKind === 'programming'">
+        <el-form-item label="题目描述" prop="content">
+          <MarkdownEditor ref="contentInputRef" v-model="form.content" :rows="5" placeholder="描述问题、输入格式、输出格式和约束" @formula="openFormulaEditor('content')" />
+        </el-form-item>
+        <el-form-item label="编程语言">
+          <el-select v-model="programmingLanguage">
+            <el-option label="C" value="c" />
+            <el-option label="C++" value="cpp" />
+            <el-option label="Java" value="java" />
+            <el-option label="Python 3" value="python" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="竞赛模式">
+          <el-switch v-model="competitionMode" active-text="开启" inactive-text="关闭" />
+        </el-form-item>
+        <template v-if="competitionMode">
+          <el-form-item label="时间限制">
+            <div class="program-limit-input"><el-input-number v-model="timeLimitMs" :min="50" :max="30000" :step="100" controls-position="right" /><span>毫秒</span></div>
+          </el-form-item>
+          <el-form-item label="内存限制">
+            <div class="program-limit-input"><el-input-number v-model="memoryLimitMb" :min="16" :max="2048" :step="16" controls-position="right" /><span>MB</span></div>
+          </el-form-item>
+        </template>
+        <el-form-item label="参考代码">
+          <CodeEditor v-model="starterCode" :language="programmingLanguage" min-height="300px" />
+        </el-form-item>
+        <el-form-item label="自定义测试点">
+          <div class="program-test-list">
+            <div v-for="(testCase, index) in programmingTestCases" :key="index" class="program-test-case">
+              <div class="program-test-heading"><strong>测试点 {{ index + 1 }}</strong><div class="program-test-actions"><el-checkbox v-model="testCase.isSample">测试样例</el-checkbox><el-button v-if="programmingTestCases.length > 1" text type="danger" @click="programmingTestCases.splice(index, 1)">删除</el-button></div></div>
+              <div class="program-test-fields">
+                <el-input v-model="testCase.input" type="textarea" :rows="3" placeholder="标准输入（stdin）" />
+                <el-input v-model="testCase.expectedOutput" type="textarea" :rows="3" placeholder="期望输出" />
+              </div>
+            </div>
+            <el-button plain :disabled="programmingTestCases.length >= 20" @click="programmingTestCases.push({ input: '', expectedOutput: '', isSample: false })">添加测试点</el-button>
+          </div>
+        </el-form-item>
+        <el-form-item label="编译测试">
+          <div class="program-run-panel">
+            <el-button type="success" :loading="runningCode" :disabled="!starterCode.trim() || !programmingTestCases.length" @click="runProgrammingTestCases">编译并运行所有测试点</el-button>
+            <div v-for="(result, index) in programmingRunResults" :key="index" class="program-run-result">
+              <el-tag :type="result.verdict === 'AC' ? 'success' : 'danger'">测试点 {{ index + 1 }} · {{ result.verdict }}</el-tag>
+              <span>{{ result.status }}<template v-if="result.time"> · {{ result.time }}s</template><template v-if="result.memory"> · {{ result.memory }}</template></span>
+              <pre v-if="result.compileOutput || result.stderr || result.stdout">{{ result.compileOutput || result.stderr || result.stdout }}</pre>
+            </div>
+          </div>
+        </el-form-item>
+      </template>
 
       <template v-if="questionKind === 'choice'">
         <el-form-item label="选项">
@@ -56,7 +107,7 @@
         </el-form-item>
       </template>
 
-      <template v-else>
+      <template v-else-if="questionKind === 'fill'">
         <el-form-item label="答案匹配">
           <el-radio-group v-model="fillAnswerMode">
             <el-radio-button value="alternatives">多种正确写法</el-radio-button>
@@ -113,6 +164,8 @@ import { addQuestion, getQuestion, updateQuestion } from '@/api/question'
 import { addQuestionType, listQuestionTypes } from '@/api/questionType'
 import { addSubject, listSubjects } from '@/api/subject'
 import { addTag, listTags } from '@/api/tag'
+import { executeCode, type CodeExecutionResult } from '@/api/codeExecution'
+import CodeEditor from '@/components/CodeEditor.vue'
 import LatexFormulaEditor from '@/components/LatexFormulaEditor.vue'
 import MarkdownEditor from '@/components/MarkdownEditor.vue'
 import TagSelector from '@/components/TagSelector.vue'
@@ -122,17 +175,26 @@ import type { Question, QuestionAddRequest } from '@/types/question'
 import type { QuestionType } from '@/types/questionType'
 import type { Subject } from '@/types/subject'
 import type { Tag } from '@/types/tag'
+import { decodeProgrammingQuestion, encodeProgrammingQuestion, MAX_PROGRAMMING_QUESTION_LENGTH, type ProgrammingLanguage, type ProgrammingTestCase } from '@/utils/programmingQuestion'
 
 const route = useRoute()
 const router = useRouter()
 const editingQuestion = ref<Question | null>(null)
-const questionKind = ref<'choice' | 'fill'>('choice')
+const questionKind = ref<'choice' | 'fill' | 'programming'>('choice')
 const options = ref<Array<{ text: string }>>([{ text: '' }, { text: '' }])
 const correctOptions = ref<number[]>([])
 const multipleChoice = ref(false)
 const fillAnswers = ref<string[]>([''])
 const fillAnswerMode = ref<FillAnswerMode>('alternatives')
 const fillAnswerRefs = ref<any[]>([])
+const programmingLanguage = ref<ProgrammingLanguage>('cpp')
+const competitionMode = ref(false)
+const timeLimitMs = ref(1000)
+const memoryLimitMb = ref(256)
+const starterCode = ref('')
+const programmingTestCases = ref<ProgrammingTestCase[]>([{ input: '', expectedOutput: '', isSample: false }])
+const programmingRunResults = ref<CodeExecutionResult[]>([])
+const runningCode = ref(false)
 
 type QuestionFormState = Omit<QuestionAddRequest, 'subjectId' | 'typeId' | 'tagIds' | 'answer' | 'analysis'> & {
   subjectId: number | string
@@ -225,6 +287,13 @@ const resetForm = () => {
   Object.assign(form, createInitialForm())
   questionTypes.value = []
   questionKind.value = 'choice'
+  programmingLanguage.value = 'cpp'
+  competitionMode.value = false
+  timeLimitMs.value = 1000
+  memoryLimitMb.value = 256
+  starterCode.value = ''
+  programmingTestCases.value = [{ input: '', expectedOutput: '', isSample: false }]
+  programmingRunResults.value = []
   options.value = [{ text: '' }, { text: '' }]
   correctOptions.value = []
   multipleChoice.value = false
@@ -235,9 +304,18 @@ const resetForm = () => {
 }
 
 const fillForm = async (question: Question) => {
+  const programmingData = decodeProgrammingQuestion(question.content)
   const parsed = decodeQuestionContent(question.content)
   const answerData = decodeAnswerData(question.answer)
-  questionKind.value = isChoiceType(question.typeName) ? 'choice' : 'fill'
+  questionKind.value = programmingData ? 'programming' : isChoiceType(question.typeName) ? 'choice' : 'fill'
+  if (programmingData) {
+    programmingLanguage.value = programmingData.language
+    competitionMode.value = programmingData.competitionMode
+    timeLimitMs.value = programmingData.timeLimitMs
+    memoryLimitMb.value = programmingData.memoryLimitMb
+    starterCode.value = programmingData.starterCode
+    programmingTestCases.value = programmingData.testCases.length ? programmingData.testCases : [{ input: '', expectedOutput: '', isSample: false }]
+  }
   options.value = parsed.options.length ? parsed.options : [{ text: '' }, { text: '' }]
   correctOptions.value = (question.answer || '').toUpperCase().match(/[A-Z]/g)?.map((label) => label.charCodeAt(0) - 65).filter((index) => index < options.value.length) || []
   multipleChoice.value = parsed.multiple
@@ -246,7 +324,7 @@ const fillForm = async (question: Question) => {
   Object.assign(form, {
     subjectId: question.subjectId,
     typeId: question.typeId,
-    content: parsed.stem,
+    content: programmingData?.statement ?? parsed.stem,
     answer: question.answer ?? '',
     analysis: question.analysis ?? '',
     imageUrl: question.imageUrl ?? '',
@@ -308,9 +386,11 @@ const ensureSubjectId = async () => {
 }
 
 const ensureTypeId = async (subjectId: number) => {
-  const name = questionKind.value === 'choice' ? '选择题' : '填空题'
+  const name = questionKind.value === 'choice' ? '选择题' : questionKind.value === 'fill' ? '填空题' : '编程题'
   const typeList = questionTypes.value.length ? questionTypes.value : await listQuestionTypes(subjectId)
-  const existingType = typeList.find((type) => questionKind.value === 'choice' ? isChoiceType(type.name) : /填空|fill/i.test(type.name))
+  const existingType = typeList.find((type) => questionKind.value === 'choice'
+    ? isChoiceType(type.name)
+    : questionKind.value === 'fill' ? /填空|fill/i.test(type.name) : /编程|程序|programming|coding/i.test(type.name))
   if (existingType) {
     return existingType.id
   }
@@ -362,7 +442,34 @@ const toggleCorrect = (index: number) => {
   }
 }
 
-const setQuestionKind = (kind: 'choice' | 'fill') => { questionKind.value = kind }
+const setQuestionKind = (kind: 'choice' | 'fill' | 'programming') => { questionKind.value = kind }
+
+const runProgrammingTestCases = async () => {
+  const testCases = programmingTestCases.value
+  if (!testCases.length) {
+    ElMessage.warning('请至少添加一个测试点')
+    return
+  }
+  runningCode.value = true
+  programmingRunResults.value = []
+  try {
+    for (const testCase of testCases) {
+      const result = await executeCode({
+        sourceCode: starterCode.value,
+        language: programmingLanguage.value,
+        input: testCase.input,
+        expectedOutput: testCase.expectedOutput,
+        timeLimitMs: competitionMode.value ? timeLimitMs.value : undefined,
+        memoryLimitMb: competitionMode.value ? memoryLimitMb.value : undefined,
+      })
+      programmingRunResults.value.push(result)
+    }
+  } catch {
+    ElMessage.error('代码执行失败，请检查本机编译器和运行时配置')
+  } finally {
+    runningCode.value = false
+  }
+}
 
 const handleMultipleModeChange = (enabled: string | number | boolean) => {
   if (!enabled && correctOptions.value.length > 1) correctOptions.value = correctOptions.value.slice(0, 1)
@@ -390,6 +497,18 @@ const setFillAnswerRef = (index: number, element: any) => { fillAnswerRefs.value
 const handleSubmit = async () => {
   await formRef.value?.validate()
 
+  if (questionKind.value === 'programming') {
+    if (programmingTestCases.value.length > 20) {
+      ElMessage.warning('编程题最多支持 20 个测试点')
+      return
+    }
+    const content = encodeProgrammingQuestion({ statement: form.content, language: programmingLanguage.value, starterCode: starterCode.value, testCases: programmingTestCases.value, competitionMode: competitionMode.value, timeLimitMs: timeLimitMs.value, memoryLimitMb: memoryLimitMb.value })
+    if (content.length > MAX_PROGRAMMING_QUESTION_LENGTH) {
+      ElMessage.warning('编程题内容超过允许上限，请减少题面、代码或测试点数据')
+      return
+    }
+  }
+
   submitting.value = true
   try {
     const subjectId = await ensureSubjectId()
@@ -401,8 +520,10 @@ const handleSubmit = async () => {
       typeId,
       content: questionKind.value === 'choice'
         ? encodeQuestionContent({ stem: form.content, options: options.value, multiple: multipleChoice.value })
-        : form.content.trim(),
-      answer: questionKind.value === 'choice'
+        : questionKind.value === 'programming'
+          ? encodeProgrammingQuestion({ statement: form.content, language: programmingLanguage.value, starterCode: starterCode.value, testCases: programmingTestCases.value, competitionMode: competitionMode.value, timeLimitMs: timeLimitMs.value, memoryLimitMb: memoryLimitMb.value })
+          : form.content.trim(),
+      answer: questionKind.value === 'programming' ? null : questionKind.value === 'choice'
         ? (correctOptions.value.map((index) => String.fromCharCode(65 + index)).join(',') || null)
         : encodeAnswers(fillAnswers.value.map((answer) => answer.trim()), fillAnswerMode.value),
       analysis: normalizeText(form.analysis),
@@ -461,5 +582,15 @@ onMounted(async () => {
 .add-option-row { min-height: 36px; }
 .fill-answer-row { display: flex; gap: 8px; width: 100%; align-items: flex-start; }
 .fill-answer-row > :first-child { flex: 1; }
+.program-test-list, .program-run-panel { display: grid; gap: 12px; width: 100%; }
+.program-test-case { padding: 12px; border: 1px solid #d1d9e0; border-radius: 6px; }
+.program-test-heading { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.program-test-actions { display: flex; align-items: center; gap: 12px; }
+.program-test-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.program-limit-input { display: flex; align-items: center; gap: 10px; }
+.program-limit-input .el-input-number { width: 220px; }
+.program-run-result { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; color: #59636e; }
+.program-run-result pre { width: 100%; max-height: 180px; margin: 0; padding: 10px; overflow: auto; background: #f6f8fa; border-radius: 4px; white-space: pre-wrap; }
+@media (max-width: 700px) { .program-test-fields { grid-template-columns: 1fr; } }
 
 </style>

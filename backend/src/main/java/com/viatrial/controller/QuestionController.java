@@ -6,6 +6,7 @@ import com.viatrial.dto.request.QuestionAddRequest;
 import com.viatrial.dto.request.QuestionPageRequest;
 import com.viatrial.dto.response.QuestionResponse;
 import com.viatrial.service.QuestionService;
+import com.viatrial.service.ProgrammingQuestionContentValidator;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -27,9 +28,12 @@ import org.springframework.web.bind.annotation.RestController;
 public class QuestionController {
 
     private final QuestionService questionService;
+    private final ProgrammingQuestionContentValidator programmingQuestionContentValidator;
 
-    public QuestionController(QuestionService questionService) {
+    public QuestionController(QuestionService questionService,
+                              ProgrammingQuestionContentValidator programmingQuestionContentValidator) {
         this.questionService = questionService;
+        this.programmingQuestionContentValidator = programmingQuestionContentValidator;
     }
 
     @Operation(summary = "新增题目")
@@ -53,6 +57,14 @@ public class QuestionController {
     @Operation(summary = "查询题目详情")
     @GetMapping("/{id}")
     public Result<QuestionResponse> getQuestion(@PathVariable Long id) {
+        QuestionResponse response = questionService.getQuestion(id);
+        response.setContent(programmingQuestionContentValidator.practiceContent(response.getContent()));
+        return Result.success(response);
+    }
+
+    @Operation(summary = "读取题目编辑数据")
+    @PostMapping("/{id}/edit")
+    public Result<QuestionResponse> getQuestionForEdit(@PathVariable Long id) {
         return Result.success(questionService.getQuestion(id));
     }
 

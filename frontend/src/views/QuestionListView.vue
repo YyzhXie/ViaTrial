@@ -101,7 +101,7 @@
       <el-table-column prop="typeName" label="题型" min-width="110" />
       <el-table-column label="题目内容" min-width="260">
         <template #default="{ row }">
-          <MarkdownRenderer :content="decodeQuestionContent(row.content).stem" />
+          <MarkdownRenderer :content="displayQuestionContent(row.content)" />
         </template>
       </el-table-column>
       <el-table-column label="答案" min-width="220">
@@ -225,13 +225,6 @@
       width="680px"
       :close-on-press-escape="false"
     >
-      <el-alert
-        title="删除科目会同时删除该科目下的题目、题型和题目标签关联。"
-        type="warning"
-        show-icon
-        :closable="false"
-        class="manage-alert"
-      />
       <el-table
         :data="subjects"
         border
@@ -269,13 +262,6 @@
       width="680px"
       :close-on-press-escape="false"
     >
-      <el-alert
-        title="删除标签会先解除题目上的标签关联，不会删除题目本身。"
-        type="warning"
-        show-icon
-        :closable="false"
-        class="manage-alert"
-      />
       <el-table
         :data="tags"
         border
@@ -322,6 +308,7 @@ import { addTag, deleteTag, listTags } from '@/api/tag'
 import MarkdownRenderer from '@/components/MarkdownRenderer.vue'
 import { safeImageUrl } from '@/utils/imageUrl'
 import { decodeAnswers, decodeQuestionContent } from '@/utils/questionFormat'
+import { decodeProgrammingQuestion } from '@/utils/programmingQuestion'
 import type { Question } from '@/types/question'
 import type { QuestionType } from '@/types/questionType'
 import type { Subject } from '@/types/subject'
@@ -352,6 +339,8 @@ const subjectForm = reactive({
 const tagForm = reactive({
   name: '',
 })
+
+const displayQuestionContent = (content: string) => decodeProgrammingQuestion(content)?.statement ?? decodeQuestionContent(content).stem
 
 const filters = reactive<{
   keyword?: string
