@@ -18,6 +18,9 @@ public class QuestionAddRequest {
      */
     public static final int MAX_CONTENT_LENGTH = 20000;
 
+    /** 编程题正文包含 Base64 编码后的代码与最多 20 个测试点。 */
+    public static final int MAX_PROGRAMMING_CONTENT_LENGTH = 750000;
+
     public static final int MAX_ANSWER_LENGTH = 20000;
 
     public static final int MAX_ANALYSIS_LENGTH = 20000;
@@ -34,7 +37,7 @@ public class QuestionAddRequest {
     private Long typeId;
 
     @NotBlank(message = "题目正文不能为空")
-    @Size(max = MAX_CONTENT_LENGTH, message = "题目正文不能超过" + MAX_CONTENT_LENGTH + "个字符")
+    @Size(max = MAX_PROGRAMMING_CONTENT_LENGTH, message = "题目正文不能超过" + MAX_PROGRAMMING_CONTENT_LENGTH + "个字符")
     @Schema(description = "题目正文")
     private String content;
 
